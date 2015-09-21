@@ -1,7 +1,6 @@
 #include <Snooze.h>
 #include <Time.h>
 #include <EEPROM.h>
-#include "PinDefinitions.h"
 #include "U8glib.h"
 #include "Watchface.h"
 #include "CuniUI.h"
