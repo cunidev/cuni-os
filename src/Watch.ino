@@ -1,5 +1,5 @@
-#include <Snooze.h>
 #include <Time.h>
+#include <Snooze.h>
 #include <EEPROM.h>
 #include "U8glib.h"
 #include "Watchface.h"
@@ -8,6 +8,7 @@
 #include "Buttons.h"
 #include "LED.h"
 #include "StopWatch.h"
+#include "PowerSaver.h"
 
 // PINS
 // 0,1 bluetooth?
@@ -242,13 +243,12 @@ const uint8_t bluetooth_broken_bitmap[] PROGMEM = {
    0xee, 0x00, 0xc7, 0x01, 0x83, 0x01 };
 
 U8GLIB_SH1106_128X64 u8g(4, 5, 6, 7);
-u8g_t vdisplay;
 StopWatch sw;    // MILLIS (default)
 StopWatch timerSW(StopWatch::SECONDS);
 Bluetooth bt(9600);
 LED notificationLED(LED_PIN);
+PowerSave pwrsave;
 ModKeypad keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
-SnoozeBlock snooze;
 
 
 void setup() {
@@ -279,7 +279,6 @@ void boot() {
       case 0:
       analogWrite(LED_PIN,5);
       // init various things
-      u8g_SetVirtualScreenDimension(&vdisplay, 128, 64);
       Serial.begin(9600);
       break;
 
@@ -563,7 +562,7 @@ void clock() {
       do {
         // clear screen
       } while(u8g.nextPage());
-      sleepUntilButtonPressed(BTN_UP);
+      pwrsave.sleepUntilButtonWake(BTN_UP);
       Serial.println("RELEASED!");
     }
     delay(1);
@@ -1363,10 +1362,3 @@ void uiStep(void)
   else
     uiKeyCode = CHESS_KEY_NONE;
 }
-
-
-void sleepUntilButtonPressed(int buttonPin) {
-  snooze.pinMode(buttonPin, INPUT_PULLUP, RISING);
-  Snooze.deepSleep(snooze);
-}
-
