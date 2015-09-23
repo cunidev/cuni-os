@@ -10,16 +10,7 @@
 #include "StopWatch.h"
 #include "PowerSaver.h"
 
-// PINS
-// 0,1 bluetooth?
-// 2,3,8,9 buttons
-// 4,5,6,7 SPI
-// 21 buzzer
-// 12 empty
-// 11 vibration
-// A6 LED
-// A0-A5 empty
-
+// Set pin below, but make sure they are supported
 const int BTN_BACK = 2;
 const int BTN_SELECT = 3;
 const int BTN_UP = 11;
@@ -31,8 +22,10 @@ const int EEPROM_ALARM_HOUR = 0;
 const int EEPROM_ALARM_MINUTE = 1;
 const int EEPROM_ALARM_ENABLED = 2;
 const int EEPROM_BT_ENABLED = 3;
-const int SW_MENU_DELAY = 200;
-const int BTN_RADIUS = 1;
+const int SW_MENU_DELAY = 200; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
+const int BTN_RADIUS = 1; // for CuniUILib
+const int DISPLAY_WIDTH = 126;
+const int DISPLAY_HEIGHT = 64;
 
 boolean bluetooth_available = false;
 boolean bluetoothOn = false;
@@ -679,7 +672,7 @@ void setAlarm() {
       do {
         u8g.setFont(u8g_font_fub49n);
         u8g.setFontPosTop();
-        int x = floor( ( 128 - u8g.getStrWidth(hourStr) ) / 2 );
+        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(hourStr) ) / 2 );
         u8g.drawStr(x,5,hourStr);
         
         u8g.setFont(u8g_font_helvR08);
@@ -718,7 +711,7 @@ void setAlarm() {
       do {
         u8g.setFont(u8g_font_fub49n);
         u8g.setFontPosTop();
-        int x = floor( ( 128 - u8g.getStrWidth(minuteStr) ) / 2 );
+        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(minuteStr) ) / 2 );
         u8g.drawStr(x,5,minuteStr);
 
         u8g.setFont(u8g_font_helvR08);
@@ -946,7 +939,7 @@ void timer() {
 
       u8g.setFont(u8g_font_profont22);
       u8g.setFontPosTop();
-      u8g.drawStr(((126 - u8g.getStrWidth(text))/2),19,text);
+      u8g.drawStr(((DISPLAY_WIDTH - u8g.getStrWidth(text))/2),19,text);
 
       u8g.setFont(u8g_font_chikita);
       u8g.setFontPosTop();
@@ -955,7 +948,7 @@ void timer() {
       } else {
         sprintf(text,"Select: Start | Down: Reset");
       }
-      u8g.drawStr(((126 - u8g.getStrWidth(text))/2),52,text);
+      u8g.drawStr(((DISPLAY_WIDTH - u8g.getStrWidth(text))/2),52,text);
       
     } while(u8g.nextPage());
     isAlarm(); // triggers both isAlarm and isTimer
@@ -976,7 +969,7 @@ void setTimer() {
       do {
         u8g.setFont(u8g_font_fub49n);
         u8g.setFontPosTop();
-        int x = floor( ( 128 - u8g.getStrWidth(hourStr) ) / 2 );
+        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(hourStr) ) / 2 );
         u8g.drawStr(x,5,hourStr);
         
         u8g.setFont(u8g_font_helvR08);
@@ -1016,7 +1009,7 @@ void setTimer() {
       do {
         u8g.setFont(u8g_font_fub49n);
         u8g.setFontPosTop();
-        int x = floor( ( 128 - u8g.getStrWidth(minuteStr) ) / 2 );
+        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(minuteStr) ) / 2 );
         u8g.drawStr(x,5,minuteStr);
 
         u8g.setFont(u8g_font_helvR08);
@@ -1089,7 +1082,7 @@ void isTimer() {
           u8g.drawStr(35,25,"Time is up!");
           u8g.setFont(u8g_font_helvR08);
           u8g.setFontPosTop();
-          Serial.println((126 - u8g.getStrWidth("Press any key..."))/2);
+          Serial.println((DISPLAY_WIDTH - u8g.getStrWidth("Press any key..."))/2);
           u8g.drawStr(27,40,"Press any key...");
         } while(u8g.nextPage());
         if((x % 7) == 0) {
@@ -1155,7 +1148,7 @@ boolean cuni_ui_confirm(char text[], char btnYes[], char btnNo[]) {
     do {
       u8g.setFont(u8g_font_helvR08);
       u8g.setFontPosTop();
-      int x = floor( ( 128 - u8g.getStrWidth(text) ) / 2 );
+      int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(text) ) / 2 );
       u8g.drawStr(x,20,text);
 
       u8g.setFont(u8g_font_helvR08);
@@ -1221,7 +1214,7 @@ int cuni_ui_dialog(char text[], char btnYes[], char btnNo[], boolean allowCancel
     do {
       u8g.setFont(u8g_font_helvR08);
       u8g.setFontPosTop();
-      int x = floor( ( 128 - u8g.getStrWidth(text) ) / 2 );
+      int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(text) ) / 2 );
       u8g.drawStr(x,20,text);
 
       u8g.setFont(u8g_font_helvR08);
@@ -1287,17 +1280,17 @@ void cuni_ui_alert(char title[], char text[], boolean showButton, char btnText[]
       //drawStatusBar();
       u8g.setFont(u8g_font_helvB08);
       u8g.setFontPosTop();
-      u8g.drawStr(floor( ( 126 - u8g.getStrWidth(title) ) / 2 ),17,title);
+      u8g.drawStr(floor( ( DISPLAY_WIDTH - u8g.getStrWidth(title) ) / 2 ),17,title);
       u8g.setFont(u8g_font_helvR08);
       u8g.setFontPosTop();
-      u8g.drawStr(floor( ( 126 - u8g.getStrWidth(text) ) / 2 ),28,text);
+      u8g.drawStr(floor( ( DISPLAY_WIDTH - u8g.getStrWidth(text) ) / 2 ),28,text);
 
       if(showButton) {
         u8g.drawRBox(18, 48, 90, 16, BTN_RADIUS);     
         u8g.setDefaultBackgroundColor();
         u8g.setFont(u8g_font_helvB08);
         u8g.setFontPosTop();
-        u8g.drawStr(floor((126 - u8g.getStrWidth(btnText))/2 ), 51, btnText);
+        u8g.drawStr(floor((DISPLAY_WIDTH - u8g.getStrWidth(btnText))/2 ), 51, btnText);
         u8g.setDefaultForegroundColor();
       }
     } while(u8g.nextPage());
