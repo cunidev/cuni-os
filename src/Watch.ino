@@ -10,21 +10,20 @@
 #include "StopWatch.h"
 #include "PowerSaver.h"
 
-// Set pin below, but make sure they are supported
+// Set pins below, but make sure they are supported
 const int BTN_BACK = 2;
 const int BTN_SELECT = 3;
 const int BTN_UP = 11;
 const int BTN_DOWN = 8;
 const int BUZZER = 21;
 const int LED_PIN = A6;
-const int LM35 = A0;
 const int EEPROM_ALARM_HOUR = 0;
 const int EEPROM_ALARM_MINUTE = 1;
 const int EEPROM_ALARM_ENABLED = 2;
 const int EEPROM_BT_ENABLED = 3;
 const int SW_MENU_DELAY = 200; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
 const int BTN_RADIUS = 1; // for CuniUILib
-const int DISPLAY_WIDTH = 126;
+const int DISPLAY_WIDTH = 126; // not 128 on my model for some problems with U8Glib, feel free to change it to 128 ;)
 const int DISPLAY_HEIGHT = 64;
 
 boolean bluetooth_available = false;
@@ -243,8 +242,11 @@ LED notificationLED(LED_PIN);
 PowerSave pwrsave;
 ModKeypad keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
 
+time_t getTeensy3Time() { return Teensy3Clock.get(); }
 
 void setup() {
+  Serial.begin(9600);
+  setSyncProvider(getTeensy3Time);
   pinMode(BUZZER,OUTPUT);
   u8g.setColorIndex(1);
   boot();
@@ -270,13 +272,10 @@ void boot() {
 
     switch(progress) {
       case 0:
-      analogWrite(LED_PIN,5);
       // init various things
-      Serial.begin(9600);
       break;
 
       case 1:
-      analogWrite(LED_PIN,15);
       // copy EEPROM to RAM
       alarmHour = EEPROM.read(EEPROM_ALARM_HOUR);
       alarmMinute = EEPROM.read(EEPROM_ALARM_MINUTE);
@@ -286,7 +285,6 @@ void boot() {
       
 
       case 2:
-      analogWrite(LED_PIN,50); 
       // init Bluetooth
       if(!bt.isReady()) { 
         cuni_ui_alert("No Bluetooth found","Timeout on Serial2", true, "Proceed");
@@ -303,7 +301,6 @@ void boot() {
       break;
     }
   }
-  analogWrite(LED_PIN,0); 
   delay(2 * SW_MENU_DELAY);
 }
 void homeScreen() {
@@ -332,7 +329,7 @@ void homeScreen() {
         case 1:
         break;
         case 2:
-        chess();
+        chess(); // uhm... quite disappointing for someone looking for something more useful (TODO!)
         break;
         case 3:
         settingsScreen();
@@ -406,7 +403,7 @@ void drawLauncher(int choice) {
  
 }
 void settingsScreen() {
-  char* bluetoothStatus;
+  char *bluetoothStatus;
   int menuCursor = 0;
   boolean settings = true;
   while(settings) {
@@ -555,8 +552,7 @@ void clock() {
       do {
         // clear screen
       } while(u8g.nextPage());
-      pwrsave.sleepUntilButtonWake(BTN_UP);
-      Serial.println("RELEASED!");
+      pwrsave.sleepUntilButtonWake(BTN_UP); // TODO/BUG: RTC NOT working while sleeping!!
     }
     delay(1);
   }
@@ -588,12 +584,15 @@ void watch() {
           break;
           case 1:
           delay(SW_MENU_DELAY);
-          timer();
-          Serial.println("EXIT TIMER");
+          Serial.print("entering timer; menuCursor #");
+          Serial.println(menuCursor);
+          timer(); // TODO: SOLVE POINTER BUG!
+          Serial.print("exit timer; menuCursor #");
+          Serial.println(menuCursor);
           break;
           case 2:
           delay(SW_MENU_DELAY);
-          char* txt;
+          char *txt;
           if(alarmEnabled) {
             txt = "Disable";
           } else {
@@ -767,17 +766,17 @@ void alarmLoop() {
       u8g.drawStr(35,40,"Press any key...");
     } while(u8g.nextPage());
     if(x == 7) {
-      analogWrite(LED_PIN, 255); // TODO: handle these with LED.cpp
+      notificationLED.enable(255);
       buzzerTone(1000,50);
       delay(50);
-      analogWrite(LED_PIN, 0);
+      notificationLED.disable();
       buzzerTone(1000,50);
       delay(50);
-      analogWrite(LED_PIN, 255);
+      notificationLED.enable(255);
       buzzerTone(1000,50);
       delay(50);
       buzzerTone(1000,50);
-      analogWrite(LED_PIN, 0);
+      notificationLED.disable();
       x = 0;
     }
     if(y == 350) {
@@ -825,7 +824,7 @@ void stopwatch() {
         }
         if(btn == BTN_DOWN && sw.isRunning()) {
           sw.stop();
-          // TODO: maybe write data on EEPROM?
+          // TODO: maybe write stopwatch data on EEPROM?
         }
         if(btn == BTN_SELECT && sw.isRunning()) {
           if(!lapButtonPressed) {
@@ -903,8 +902,6 @@ void timer() {
       timerSet = true;
   }
   while(timerSet && timerOn) {
-          Serial.print("DEBUG: cycle ");
-          Serial.println(random(0,10000));
     u8g.firstPage();
     do {
       int btnId = keypad.getPressedButton();
@@ -952,7 +949,7 @@ void timer() {
       
     } while(u8g.nextPage());
     isAlarm(); // triggers both isAlarm and isTimer
-  } Serial.println("EXIT CYCLE");
+  }
 }
 void setTimer() {
   int timerHour = 0;
@@ -1086,10 +1083,10 @@ void isTimer() {
           u8g.drawStr(27,40,"Press any key...");
         } while(u8g.nextPage());
         if((x % 7) == 0) {
-          analogWrite(LED_PIN, 255); //TODO: handle this with LED library
+          notificationLED.enable(255);
           buzzerTone(300,50);
           delay(80);
-          analogWrite(LED_PIN, 0);
+          notificationLED.disable();
           buzzerTone(300,50);
         }
         if(x == 100) {
@@ -1340,9 +1337,9 @@ void uiStep(void)
   uiKeyCodeSecond = uiKeyCodeFirst;
   int btn = keypad.getPressedButton();
   if ( btn == BTN_DOWN )
-    uiKeyCodeFirst = CHESS_KEY_PREV;
+    uiKeyCodeFirst = CHESS_KEY_NEXT; // bugfix: inverted keys on menu
   else if ( btn == BTN_UP )
-    uiKeyCodeFirst = CHESS_KEY_NEXT;
+    uiKeyCodeFirst = CHESS_KEY_PREV;
   else if ( btn == BTN_SELECT )
     uiKeyCodeFirst = CHESS_KEY_SELECT;
   else if ( btn == BTN_BACK  )
