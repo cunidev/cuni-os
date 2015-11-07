@@ -10,6 +10,36 @@
 #include "StopWatch.h"
 #include "PowerSaver.h"
 
+/* 
+ * The BIG ToDo List 
+ * - fix some horrible bugs: the Timer bug, and the Snooze RTC bug
+ * - (maybe) save stopwatch data and latest watchface in EEPROM
+ * - use Bluetooth menu (now empty) for Notifications and device info (BT firmware, module name...)
+ * - add some apps to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
+ * 
+ * Settings (many, many changes):
+ * - as the option number is going to grow, first of all a decent menu support on the Cuni UI must be added
+ * - set time and date (and function to set them automatically on BT connection)
+ * - boot-to-clock: direct boot to your favourite watchface
+ * - quick boot: don't init bluetooth (or init it when enabling it)
+ * - serial console: display log with a tiny, tiny font on the display, and receive commands for almost all settings from serial port
+ * - watch and serial password: 4-digit password as a nice (very very basic) security function
+ * - quick action on press of up+down keys together (well, other combinations are still possible, like up+select, down+select, select+back etc.)
+ * - factory reset: reset all EEPROM data (set all addresses to 0)
+ * 
+ * 
+ * Cuni UI library:
+ * - put Cuni UI library functions in CuniUI.cpp (pass the u8g display, and the buttons, as parameters)
+ * - add MENUS!!!
+ * - add nice Android-style dialog with radio buttons (and/or checkboxes)
+ * - add progress screen (with a nice progress bar, like for Factory Reset)
+ * - add alert screens with auto dismiss after X seconds
+ * 
+ * Once all the things on this list (which is going to grow) are done, CuniOS will be a nice DIY smartwatch OS. Don't worry, it'll take less than 2 centuries ;)
+ * 
+ * Happy hacking!
+ */
+
 // Set pins below, but make sure they are supported
 const int BTN_BACK = 2;
 const int BTN_SELECT = 3;
