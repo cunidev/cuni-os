@@ -2,9 +2,9 @@
  * Tiny Teensy library for the HC-06 Bluetooth module
  */
 #ifndef Bluetooth_h
-#include "Arduino.h"
-
 #define Bluetooth_h
+
+#include "Arduino.h"
 
 class Bluetooth {
   public:
