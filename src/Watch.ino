@@ -14,6 +14,7 @@
 /* 
  * The BIG ToDo List 
  * - fix some horrible bugs: the Timer bug, and the Snooze RTC bug
+ * - fix another (easy to solve) bug: laps have a reset when putting the app in background (while status and stopwatch run properly in background)
  * - (maybe) save stopwatch data and latest watchface in EEPROM
  * - use Bluetooth menu (now empty) for Notifications and device info (BT firmware, module name...)
  * - add some apps to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
@@ -27,10 +28,10 @@
  * - watch and serial password: 4-digit password as a nice (very very basic) security function
  * - quick action on press of up+down keys together (well, other combinations are still possible, like up+select, down+select, select+back etc.)
  * - factory reset: reset all EEPROM data (set all addresses to 0)
+ * - set button radius (and other CuniUI settings maybe?) in Settings
  * 
  * 
  * Cuni UI library:
- * - put Cuni UI library functions in CuniUI.cpp (pass the u8g display, and the buttons, as parameters)
  * - add MENUS!!!
  * - add DatePicker, TimePicker, ProgressWindow (dialog with progress bar, for example for EEPROM reset or other long tasks
  * - add nice Android-style dialog with radio buttons (and/or checkboxes)
@@ -55,7 +56,7 @@ const int EEPROM_ALARM_ENABLED = 2;
 const int EEPROM_BT_ENABLED = 3;
 const int SW_MENU_DELAY = 200; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
 const int BTN_RADIUS = 1; // for CuniUILib
-const int DISPLAY_WIDTH = 126; // not 128 on my model for some problems with U8Glib, feel free to change it to 128 ;)
+const int DISPLAY_WIDTH = 128;
 const int DISPLAY_HEIGHT = 64;
 
 boolean bluetooth_available = false;
@@ -85,13 +86,16 @@ uint8_t uiKeyCodeFirst = CHESS_KEY_NONE;
 uint8_t uiKeyCodeSecond = CHESS_KEY_NONE;
 uint8_t uiKeyCode = CHESS_KEY_NONE;
 
-U8GLIB_SH1106_128X64 u8g(4, 5, 6, 7);
+U8GLIB_SSD1306_128X64 u8g(4, 5, 6, 7);
+//U8GLIB_SH1106_128X64 u8g(4, 5, 6, 7); // replace with this or another constructor if you notice pixels shifted by 2 positions on Y axis... 
+
 StopWatch sw;    // MILLIS (default)
 StopWatch timerSW(StopWatch::SECONDS);
 Bluetooth bt(9600);
 LED notificationLED(LED_PIN);
 PowerSave pwrsave;
 ModKeypad keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
+CuniUI ui(u8g, keypad, 128, 64);
 
 time_t getTeensy3Time() { return Teensy3Clock.get(); }
 
@@ -138,7 +142,7 @@ void boot() {
       case 2:
       // init Bluetooth
       if(!bt.isReady()) { 
-        cuni_ui_alert("No Bluetooth found","Timeout on Serial2", true, "Proceed");
+        ui.alert("No Bluetooth found","Timeout on Serial2", true, "Proceed");
         bluetooth_available = false; // NO hotplug support, needs reboot if not inserted
       } else {
         bluetooth_available = true;
@@ -369,13 +373,13 @@ void toggleBluetoothStatus() {
   // TODO: handle in EEPROM!
   if(bluetooth_available) {
     if(bluetoothOn) {
-      if(cuni_ui_confirm("Disable Bluetooth?","OK","Cancel")) bluetoothOn = false;
+      if(ui.confirm("Disable Bluetooth?","OK","Cancel")) bluetoothOn = false;
     } else {
-      if(cuni_ui_confirm("Enable Bluetooth?","OK","Cancel")) bluetoothOn = true;
+      if(ui.confirm("Enable Bluetooth?","OK","Cancel")) bluetoothOn = true;
     }
     EEPROM.write(EEPROM_BT_ENABLED,bluetoothOn);
   } else {
-    cuni_ui_alert("No Bluetooth found","Please insert BT",true,"OK");
+    ui.alert("No Bluetooth found","Please insert BT",true,"OK");
   }
 }
 void clock() {
@@ -450,7 +454,7 @@ void watch() {
             txt = "Enable";
           }
           int result;
-          result = cuni_ui_dialog("Alarm","Set time",txt,true);
+          result = ui.dialog("Alarm","Set time",txt,true);
           if(result == 1) {
             setAlarm();
           } else if(result == 2) {
@@ -502,9 +506,9 @@ void watch() {
   }
 }
 void softwareUpdate() {
-  if(cuni_ui_confirm("This will delete all data","Proceed","Cancel")) {
+  if(ui.confirm("This will delete all data","Proceed","Cancel")) {
     // delete EEPROM data (with progress bar)
-    cuni_ui_alert("","Reset successful",true,"Reboot");
+    ui.alert("","Reset successful",true,"Reboot");
     // reboot
   }
 }
@@ -593,7 +597,7 @@ void setAlarm() {
       if(alMinute < 0) alMinute = 59;
     }
     sprintf(text,"Set alarm to %02d:%02d?", alHour,alMinute);
-    if(cuni_ui_confirm(text,"OK","Cancel")) {
+    if(ui.confirm(text,"OK","Cancel")) {
       setAlarmTime(alHour,alMinute);
       alarm = false;
     } else {
@@ -984,172 +988,6 @@ void setAlarmTime(int alHour, int alMinute) {
   alarmMinute = EEPROM.read(EEPROM_ALARM_MINUTE);
 }
 
-/* CuniUI Functions */
-
-boolean cuni_ui_confirm(char text[], char btnYes[], char btnNo[]) {
-  isAlarm();
-  boolean waitingConfirm = true;
-  boolean result;
-  int cursor = 0;
-  while(waitingConfirm) {
-    u8g.firstPage();
-    do {
-      u8g.setFont(u8g_font_helvR08);
-      u8g.setFontPosTop();
-      int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(text) ) / 2 );
-      u8g.drawStr(x,20,text);
-
-      u8g.setFont(u8g_font_helvR08);
-      x = floor(2 + ((57 - u8g.getStrWidth(btnYes))/2 ));
-      u8g.setFontPosTop();
-      if(cursor == 0) {
-        u8g.drawRBox(2, 48, 60, 16, BTN_RADIUS); // X pixel range for font: 2->59
-        
-        u8g.setDefaultBackgroundColor();
-        u8g.setFont(u8g_font_helvB08);
-        u8g.setFontPosTop();
-        u8g.drawStr(x, 51, btnYes);
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setDefaultForegroundColor();
-      } else {
-        u8g.drawRFrame(2, 48, 60, 16, BTN_RADIUS); // X pixel range for font: 2->59
-        
-        u8g.drawStr(x, 51, btnYes);
-      }
-      
-      x = floor(66 + ((57 - u8g.getStrWidth(btnNo))/2 ));
-      u8g.setFontPosTop();
-      if(cursor == 1) {
-        u8g.drawRBox(66, 48, 60, 16, BTN_RADIUS);  // X pixel range for font: 66->123
-        
-        u8g.setDefaultBackgroundColor();
-        u8g.setFont(u8g_font_helvB08);
-        u8g.setFontPosTop();
-        u8g.drawStr(x, 51, btnNo);
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setDefaultForegroundColor();
-      } else {
-        u8g.drawRFrame(66, 48, 60, 16, BTN_RADIUS);  // X pixel range for font: 66->123
-        u8g.drawStr(x, 51, btnNo);
-      }
-      u8g.setDefaultForegroundColor();
-    } while(u8g.nextPage());
-    int btnID = keypad.getPressedButton();
-    if(btnID != 0) {
-      if(btnID == BTN_BACK) {
-        delay(SW_MENU_DELAY);
-        result = false;
-        waitingConfirm = false;
-      } else if(btnID == BTN_DOWN || btnID == BTN_UP) {
-        delay(SW_MENU_DELAY/2);
-        if(cursor == 0) cursor = 1;
-        else cursor = 0;
-      } else if(btnID == BTN_SELECT) {
-        delay(SW_MENU_DELAY);
-        if(cursor == 0) result = true;
-        else result = false;
-        waitingConfirm = false;
-      }
-    }
-  }
-  return result;
-}
-int cuni_ui_dialog(char text[], char btnYes[], char btnNo[], boolean allowCancel) {
-  isAlarm();
-  int cursor = 0;
-  while(true) {
-    u8g.firstPage();
-    do {
-      u8g.setFont(u8g_font_helvR08);
-      u8g.setFontPosTop();
-      int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(text) ) / 2 );
-      u8g.drawStr(x,20,text);
-
-      u8g.setFont(u8g_font_helvR08);
-      x = floor(2 + ((57 - u8g.getStrWidth(btnYes))/2 ));
-      u8g.setFontPosTop();
-      if(cursor == 0) {
-        u8g.drawRBox(2, 48, 60, 16, BTN_RADIUS); // X pixel range for font: 2->59
-        
-        u8g.setDefaultBackgroundColor();
-        u8g.setFont(u8g_font_helvB08);
-        u8g.setFontPosTop();
-        u8g.drawStr(x, 51, btnYes);
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setDefaultForegroundColor();
-      } else {
-        u8g.drawRFrame(2, 48, 60, 16, BTN_RADIUS); // X pixel range for font: 2->59
-        
-        u8g.drawStr(x, 51, btnYes);
-      }
-      
-      x = floor(66 + ((57 - u8g.getStrWidth(btnNo))/2 ));
-      u8g.setFontPosTop();
-      if(cursor == 1) {
-        u8g.drawRBox(66, 48, 60, 16, BTN_RADIUS);  // X pixel range for font: 66->123
-        
-        u8g.setDefaultBackgroundColor();
-        u8g.setFont(u8g_font_helvB08);
-        u8g.setFontPosTop();
-        u8g.drawStr(x, 51, btnNo);
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setDefaultForegroundColor();
-      } else {
-        u8g.drawRFrame(66, 48, 60, 16, BTN_RADIUS);  // X pixel range for font: 66->123
-        u8g.drawStr(x, 51, btnNo);
-      }
-      u8g.setDefaultForegroundColor();
-    } while(u8g.nextPage());
-    int btnID = keypad.getPressedButton();
-    if(btnID != 0) {
-      if(btnID == BTN_BACK && allowCancel) {
-        delay(SW_MENU_DELAY);
-        return 0;
-      } else if(btnID == BTN_DOWN || btnID == BTN_UP) {
-        delay(SW_MENU_DELAY/2);
-        if(cursor == 0) cursor = 1;
-        else cursor = 0;
-      } else if(btnID == BTN_SELECT) {
-        delay(SW_MENU_DELAY);
-        cursor++;
-        return cursor;
-      }
-    }
-  }
-  return 0;
-}
-
-
-void cuni_ui_alert(char title[], char text[], boolean showButton, char btnText[]) {
-  isAlarm();
-  while(true) {
-    u8g.firstPage();
-    do {
-      //drawStatusBar();
-      u8g.setFont(u8g_font_helvB08);
-      u8g.setFontPosTop();
-      u8g.drawStr(floor( ( DISPLAY_WIDTH - u8g.getStrWidth(title) ) / 2 ),17,title);
-      u8g.setFont(u8g_font_helvR08);
-      u8g.setFontPosTop();
-      u8g.drawStr(floor( ( DISPLAY_WIDTH - u8g.getStrWidth(text) ) / 2 ),28,text);
-
-      if(showButton) {
-        u8g.drawRBox(18, 48, 90, 16, BTN_RADIUS);     
-        u8g.setDefaultBackgroundColor();
-        u8g.setFont(u8g_font_helvB08);
-        u8g.setFontPosTop();
-        u8g.drawStr(floor((DISPLAY_WIDTH - u8g.getStrWidth(btnText))/2 ), 51, btnText);
-        u8g.setDefaultForegroundColor();
-      }
-    } while(u8g.nextPage());
-    if(keypad.getPressedButton() == BTN_SELECT || (showButton == false && keypad.getPressedButton() != 0)) {
-      delay(SW_MENU_DELAY);
-      break;
-    }
-  }
-
-}
-
 /* CHESS */
 void chess() {
   chess_Init(u8g.getU8g(), 0);
@@ -1171,7 +1009,7 @@ boolean chessLoop() {
 
   if(keyCode == CHESS_KEY_BACK) {
     delay(SW_MENU_DELAY);
-    if(cuni_ui_confirm("Close without saving?","Quit game","Continue")) {
+    if(ui.confirm("Close without saving?","Quit game","Continue")) {
       delay(SW_MENU_DELAY);
       return false;
     }

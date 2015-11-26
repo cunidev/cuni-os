@@ -28,14 +28,14 @@ void getTime()
   hours = hours +1;                 // daylight savings  
 } 
 
-void drawDial(float rotation, float ratio, int radius, U8GLIB_SH1106_128X64 u8g) {
+void drawDial(float rotation, float ratio, int radius, U8GLIB_SSD1306_128X64 u8g) {
   angle =  (rotation-15) * 2.0 * 3.1415 / ratio; // 
   X2 = ScreenWithC + radius * cos(angle);
   Y2 = ScreenHeightC + radius * sin(angle);
   u8g.drawLine(ScreenWithC, ScreenHeightC, X2, Y2);
 }
 
-void dial(U8GLIB_SH1106_128X64 u8g) { // draw the dial
+void dial(U8GLIB_SSD1306_128X64 u8g) { // draw the dial
   // u8g.drawCircle(ScreenWithC, ScreenHeightC, 31);  // drwas circle around the dial
   u8g.drawCircle(ScreenWithC, ScreenHeightC, 1);
 
@@ -67,7 +67,7 @@ void dial(U8GLIB_SH1106_128X64 u8g) { // draw the dial
 
 }
 
-void drawAnalogClock(U8GLIB_SH1106_128X64 u8g) {
+void drawAnalogClock(U8GLIB_SSD1306_128X64 u8g) {
   // graphic commands to redraw the complete screen should be placed here 
   u8g.setFont(u8g_font_04b_03);
 

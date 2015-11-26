@@ -21,7 +21,7 @@ void switchWatchFacePrevious() {
     watchFaceId = 4;
 }
 
-void drawWatchFace(char* formattedHour, char* fullFormattedHour, char* fullFormattedDate, U8GLIB_SH1106_128X64 u8g) {
+void drawWatchFace(char* formattedHour, char* fullFormattedHour, char* fullFormattedDate, U8GLIB_SSD1306_128X64 u8g) {
   switch(watchFaceId) {
     case 0:
     z++;

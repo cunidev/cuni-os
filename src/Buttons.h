@@ -11,7 +11,7 @@ class ModKeypad {
     ModKeypad(int back, int select, int up, int down);
     int getPressedButton();
     boolean isButtonPressed(enum Buttons btn_label);
-  private:
+    
     int pin_back;
     int pin_select;
     int pin_up;
