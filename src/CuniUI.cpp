@@ -40,7 +40,7 @@ void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[]
       }
     } while(u8g.nextPage());
     if(keypad.getPressedButton() == keypad.pin_select || (showButton == false && keypad.getPressedButton() != 0)) {
-      // delay?
+      delay(SW_MENU_DELAY);
       break;
     }
   }

@@ -7,6 +7,7 @@
 #include "Bluetooth.h"
 #include "Buttons.h"
 #include "LED.h"
+#include "RTC.h"
 #include "StopWatch.h"
 #include "PowerSaver.h"
 #include "Bitmaps.h"
@@ -14,7 +15,7 @@
 /* 
  * The BIG ToDo List 
  * - fix some horrible bugs: the Timer bug, and the Snooze RTC bug
- * - fix another (easy to solve) bug: laps have a reset when putting the app in background (while status and stopwatch run properly in background)
+ * - add RTC.cpp for RTC functions (in this way, it'll be possible to configure the driver for any internal or external RTC much more easily)
  * - (maybe) save stopwatch data and latest watchface in EEPROM
  * - use Bluetooth menu (now empty) for Notifications and device info (BT firmware, module name...)
  * - add some apps to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
@@ -65,10 +66,14 @@ boolean lostAlarm = false;
 boolean ignoreAlarm = false;
 boolean alarmEnabled = false;
 
-char formattedHour[5];
-char fullFormattedHour[9];
-char fullFormattedDate[11];
-int intCounter = 0;
+char stopwatch_lap1[15] = "#1 --:--:--:--";
+char stopwatch_lap2[15] = "#2 --:--:--:--";
+char stopwatch_lap3[15] = "#3 --:--:--:--";
+char stopwatch_lap4[15] = "#4 --:--:--:--"; // obviously, this could be managed much better!
+
+// char formattedHour[5];
+//char fullFormattedHour[9];
+//char fullFormattedDate[11];
 int statusBarCounter = 0;
 int alarmHour = 0;
 int alarmMinute = 0;
@@ -96,12 +101,11 @@ LED notificationLED(LED_PIN);
 PowerSave pwrsave;
 ModKeypad keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
 CuniUI ui(u8g, keypad, 128, 64);
+CuniRTC rtc;
 
-time_t getTeensy3Time() { return Teensy3Clock.get(); }
 
 void setup() {
   Serial.begin(9600);
-  setSyncProvider(getTeensy3Time);
   pinMode(BUZZER,OUTPUT);
   u8g.setColorIndex(1);
   boot();
@@ -207,8 +211,7 @@ void homeScreen() {
 void drawStatusBar() {
   u8g.setFont(u8g_font_helvB08);
   u8g.setFontPosTop();
-  updateFormattedHour();
-  u8g.drawStr(50,-1,formattedHour);
+  u8g.drawStr(50,0,rtc.getFormattedHour());
   u8g.drawBox(112,0,12,6);
   u8g.drawBox(124,1,2,4);
   if(alarmEnabled) {
@@ -386,10 +389,9 @@ void clock() {
   boolean clock = true;
   while(clock) {
     isAlarm();
-    updateFormattedHour();  
     u8g.firstPage();
     do {  
-        drawWatchFace(formattedHour, fullFormattedHour, fullFormattedDate, u8g);
+        drawWatchFace(rtc.getFormattedHour(), rtc.getFullFormattedHour(), rtc.getFullFormattedDate(), u8g);
     } while( u8g.nextPage());
     int btn = keypad.getPressedButton();
     if(btn == BTN_SELECT) {
@@ -653,10 +655,6 @@ void stopwatch() {
   boolean lapButtonPressed = false;
   
   char text[12];
-  char lap1[15] = "#1 --:--:--:--";
-  char lap2[15] = "#2 --:--:--:--";
-  char lap3[15] = "#3 --:--:--:--";
-  char lap4[15] = "#4 --:--:--:--";
   int lapCounter = 0;
   
   while(stopwatch) {
@@ -685,16 +683,16 @@ void stopwatch() {
           if(!lapButtonPressed) {
             switch(lapCounter) {
               case 0:
-              sprintf(lap1,"#1 %s",text);
+              sprintf(stopwatch_lap1,"#1 %s",text);
               break;
               case 1:
-              sprintf(lap2,"#2 %s",text);
+              sprintf(stopwatch_lap2,"#2 %s",text);
               break;
               case 2:
-              sprintf(lap3,"#3 %s",text);
+              sprintf(stopwatch_lap3,"#3 %s",text);
               break;
               case 3:
-              sprintf(lap4,"#4 %s",text);
+              sprintf(stopwatch_lap4,"#4 %s",text);
               break;
               default:
               // do nothing
@@ -708,10 +706,10 @@ void stopwatch() {
         }
         if(btn == BTN_SELECT && !sw.isRunning()) {
           sw.reset();
-          sprintf(lap1,"#1 --:--:--:--");
-          sprintf(lap2,"#2 --:--:--:--");
-          sprintf(lap3,"#3 --:--:--:--");
-          sprintf(lap4,"#4 --:--:--:--");
+          sprintf(stopwatch_lap1,"#1 --:--:--:--");
+          sprintf(stopwatch_lap2,"#2 --:--:--:--");
+          sprintf(stopwatch_lap3,"#3 --:--:--:--");
+          sprintf(stopwatch_lap4,"#4 --:--:--:--");
           lapCounter = 0;
         }
       } else {
@@ -723,10 +721,10 @@ void stopwatch() {
       u8g.drawStr(4,8,text);
 
       u8g.setFont(u8g_font_profont10);
-      u8g.drawStr(6,33,lap1);
-      u8g.drawStr(6,42,lap2);
-      u8g.drawStr(6,51,lap3);
-      u8g.drawStr(6,60,lap4);
+      u8g.drawStr(6,33,stopwatch_lap1);
+      u8g.drawStr(6,42,stopwatch_lap2);
+      u8g.drawStr(6,51,stopwatch_lap3);
+      u8g.drawStr(6,60,stopwatch_lap4);
       
       u8g.drawLine(88,0,88,64);
       u8g.setFont(u8g_font_orgv01);
@@ -956,13 +954,11 @@ void isTimer() {
     }
   }
 }
-void updateFormattedHour() {
-  intCounter++;
+/*void updateFormattedHour() {
   sprintf(formattedHour,"%02d:%02d", hour(), minute());
   sprintf(fullFormattedHour,"%02d:%02d:%02d",hour(), minute(), second());
   sprintf(fullFormattedDate,"%02d/%02d/%02d", day(), month(), year() % 100);
-  intCounter = 0;
-}
+}*/
 
 void updateAlarmEnabled() {
   if(EEPROM.read(EEPROM_ALARM_ENABLED) == 1) {
