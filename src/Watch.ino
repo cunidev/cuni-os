@@ -1,4 +1,4 @@
-#include <Time.h>
+#include <Time.h> // comment out this line if you are using this OS with a different RTC.cpp file and a platform which is not Teensy
 #include <Snooze.h>
 #include <EEPROM.h>
 #include "U8glib.h"
@@ -15,7 +15,6 @@
 /* 
  * The BIG ToDo List 
  * - fix some horrible bugs: the Timer bug, and the Snooze RTC bug
- * - add RTC.cpp for RTC functions (in this way, it'll be possible to configure the driver for any internal or external RTC much more easily)
  * - (maybe) save stopwatch data and latest watchface in EEPROM
  * - use Bluetooth menu (now empty) for Notifications and device info (BT firmware, module name...)
  * - add some apps to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
@@ -515,98 +514,15 @@ void softwareUpdate() {
   }
 }
 void setAlarm() {
-  boolean alarm = true;
   char text[30];
   int alHour = alarmHour;
   int alMinute = alarmMinute;
-  while(alarm) {
-    boolean setAlarmHour = true;
-    while(setAlarmHour) {
-      char hourStr[3];
-      u8g.firstPage();
-      sprintf(hourStr,"%02d",alHour);
-      do {
-        u8g.setFont(u8g_font_fub49n);
-        u8g.setFontPosTop();
-        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(hourStr) ) / 2 );
-        u8g.drawStr(x,5,hourStr);
-        
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setFontPosTop();
-        u8g.drawStr90(10,22,"hour");
-      } while(u8g.nextPage());
-      int btnID = keypad.getPressedButton();
-      if(btnID != 0) {
-        switch(btnID) {
-          case BTN_UP:
-          alHour++;
-          break;
-          case BTN_DOWN:
-          alHour--;
-          break;
-          case BTN_BACK:
-          // TODO: cancel operation
-          break;
-          case BTN_SELECT:
-          delay(SW_MENU_DELAY);
-          setAlarmHour = false;
-          break;
-          default:
-          break;
-        }
-        delay(SW_MENU_DELAY/2);
-      }
-      if(alHour > 23) alHour = 0;
-      if(alHour < 0) alHour = 23;
-    }
-    boolean setAlarmMinute = true;
-    while(setAlarmMinute) {
-      char minuteStr[3];
-      u8g.firstPage();
-      sprintf(minuteStr,"%02d",alMinute);
-      do {
-        u8g.setFont(u8g_font_fub49n);
-        u8g.setFontPosTop();
-        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(minuteStr) ) / 2 );
-        u8g.drawStr(x,5,minuteStr);
 
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setFontPosTop();
-        u8g.drawStr90(10,18,"minute");
-      } while(u8g.nextPage());
-      int btnID = keypad.getPressedButton();
-      if(btnID != 0) {
-        switch(btnID) {
-          case BTN_UP:
-          alMinute++;
-          break;
-          case BTN_DOWN:
-          alMinute--;
-          break;
-          case BTN_BACK:
-          // TODO: cancel operation
-          break;
-          case BTN_SELECT:
-          delay(SW_MENU_DELAY/2);
-          setAlarmMinute = false;
-          break;
-          default:
-          break;
-        }
-        delay(SW_MENU_DELAY/2);
-      }
-      if(alMinute > 59) alMinute = 0;
-      if(alMinute < 0) alMinute = 59;
-    }
-    sprintf(text,"Set alarm to %02d:%02d?", alHour,alMinute);
-    if(ui.confirm(text,"OK","Cancel")) {
-      setAlarmTime(alHour,alMinute);
-      alarm = false;
-    } else {
-      alarm = false;
-    }
+  ui.timePicker(&alHour, &alMinute, alHour, alMinute);
+  sprintf(text,"Set alarm to %02d:%02d?", alHour, alMinute);
+  if(ui.confirm(text,"OK","Cancel")) {
+    setAlarmTime(alHour, alMinute);
   }
-  
 }
 void alarmLoop() {
   int x = 7;
@@ -811,87 +727,12 @@ void setTimer() {
       timerSW.stop();
       timerSW.reset();
     }
-    boolean setTimerHour = true;
-    while(setTimerHour) {
-      char hourStr[3];
-      u8g.firstPage();
-      sprintf(hourStr,"%02d",timerHour);
-      do {
-        u8g.setFont(u8g_font_fub49n);
-        u8g.setFontPosTop();
-        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(hourStr) ) / 2 );
-        u8g.drawStr(x,5,hourStr);
-        
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setFontPosTop();
-        u8g.drawStr90(10,22,"hour");
-      } while(u8g.nextPage());
-      int btnID = keypad.getPressedButton();
-      if(btnID != 0) {
-        switch(btnID) {
-          case BTN_UP:
-          timerHour++;
-          break;
-          case BTN_DOWN:
-          timerHour--;
-          break;
-          case BTN_BACK:
-          // TODO: cancel operation
-          break;
-          case BTN_SELECT:
-          delay(SW_MENU_DELAY);
-          setTimerHour = false;
-          break;
-          default:
-          break;
-        }
-        delay(SW_MENU_DELAY/2);
-      }
-      if(timerHour > 23) timerHour = 0;
-      if(timerHour < 0) timerHour = 23;
+    timerHour = ui.hourPicker();
+    int timerMinuteMin = 0;
+    if(timerHour == 0) { 
+      timerMinuteMin = 1;
     }
-    boolean setTimerMinute = true;
-    if(timerHour == 0) timerMinute = 1;
-    while(setTimerMinute) {
-      char minuteStr[3];
-      u8g.firstPage();
-      sprintf(minuteStr,"%02d",timerMinute);
-      do {
-        u8g.setFont(u8g_font_fub49n);
-        u8g.setFontPosTop();
-        int x = floor( ( DISPLAY_WIDTH - u8g.getStrWidth(minuteStr) ) / 2 );
-        u8g.drawStr(x,5,minuteStr);
-
-        u8g.setFont(u8g_font_helvR08);
-        u8g.setFontPosTop();
-        u8g.drawStr90(10,18,"minute");
-      } while(u8g.nextPage());
-      int btnID = keypad.getPressedButton();
-      if(btnID != 0) {
-        switch(btnID) {
-          case BTN_UP:
-          timerMinute++;
-          break;
-          case BTN_DOWN:
-          timerMinute--;
-          break;
-          case BTN_BACK:
-          // TODO: cancel operation
-          break;
-          case BTN_SELECT:
-          delay(SW_MENU_DELAY/2);
-          setTimerMinute = false;
-          break;
-          default:
-          break;
-        }
-        delay(SW_MENU_DELAY/2);
-      }
-      if(timerMinute > 59 && timerHour == 0) timerMinute = 1;
-      if(timerMinute > 59 && timerHour != 0) timerMinute = 0;
-      if(timerMinute < 0) timerMinute = 59;
-      if(timerMinute < 1 && timerHour == 0) timerMinute = 59;
-    }
+    timerMinute = ui.numberPicker(timerMinuteMin, 59, true, "minute");
     timerSeconds = (timerHour * 3600) + (timerMinute * 60);
 }
 
