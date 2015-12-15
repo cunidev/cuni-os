@@ -3,6 +3,7 @@
 #include <EEPROM.h>
 #include "U8glib.h"
 #include "Watchface.h"
+#include "CuniEEPROM.h"
 #include "CuniUI.h"
 #include "Bluetooth.h"
 #include "Buttons.h"
@@ -33,7 +34,7 @@
  * 
  * Cuni UI library:
  * - add MENUS!!!
- * - add DatePicker, TimePicker, ProgressWindow (dialog with progress bar, for example for EEPROM reset or other long tasks
+ * - add DatePicker, ProgressWindow (dialog with progress bar, for example for EEPROM reset or other long tasks)
  * - add nice Android-style dialog with radio buttons (and/or checkboxes)
  * - add progress screen (with a nice progress bar, like for Factory Reset)
  * - add alert screens with auto dismiss after X seconds
@@ -42,6 +43,12 @@
  * 
  * Happy hacking!
  */
+
+// information on version and platform (for future use)
+#define CUNI_OS_VERSION_ID 0
+#define CUNI_OS_VERSION_LABEL "0.1 alpha"
+#define CUNI_OS_PLATFORM_ID 1
+#define CUNI_OS_PLATFORM_LABEL "Teensy 3.1"
 
 // Set pins below, but make sure they are supported
 const int BTN_BACK = 2;
@@ -54,6 +61,8 @@ const int EEPROM_ALARM_HOUR = 0;
 const int EEPROM_ALARM_MINUTE = 1;
 const int EEPROM_ALARM_ENABLED = 2;
 const int EEPROM_BT_ENABLED = 3;
+const int EEPROM_LATEST_WATCHFACE = 4; // to be implemented
+const int EEPROM_OS_VERSION = 511;
 const int SW_MENU_DELAY = 200; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
 const int BTN_RADIUS = 1; // for CuniUILib
 const int DISPLAY_WIDTH = 128;
@@ -83,7 +92,7 @@ int swSecond = 0;
 int swMillis = 0;
 
 boolean timerSet = false;
-long timerSeconds = 0;
+uint16_t timerSeconds = 0;
 
 // Chess variables
 uint8_t uiKeyCodeFirst = CHESS_KEY_NONE;
@@ -101,12 +110,26 @@ PowerSave pwrsave;
 ModKeypad keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
 CuniUI ui(u8g, keypad, 128, 64);
 CuniRTC rtc;
+CuniEEPROM eeprom;
 
 
 void setup() {
   Serial.begin(9600);
   pinMode(BUZZER,OUTPUT);
   u8g.setColorIndex(1);
+  
+  u8g.firstPage();
+  do {
+    // clear screen
+  } while(u8g.nextPage());
+  
+  if(keypad.isButtonPressed(ModKeypad::KEY_BUP) && keypad.isButtonPressed(ModKeypad::KEY_BDOWN)) {
+    buzzerTone(350,200);
+    buzzerTone(450,200);
+    buzzerTone(550,200);
+
+    recoveryMode(); // No, the code execution doesn't necessarily stop here...
+  }
   boot();
 
 }
@@ -125,19 +148,39 @@ void boot() {
       u8g.drawBox(0,58,x,6);
     } while(u8g.nextPage());
 
-    if(progress == 3) break;
-    progress++;
 
     switch(progress) {
       case 0:
       // init various things
+      if(eeprom.read(EEPROM_OS_VERSION) != CUNI_OS_VERSION_ID) {
+        // prevents incompatible systems, which may cause, for example, problems with different EEPROM addresses
+        u8g.firstPage();
+        do {
+          u8g.setFont(u8g_font_helvB08);
+          u8g.setFontPosTop();
+          u8g.drawStr(0,2,"Fatal error");
+          u8g.setFont(u8g_font_profont10);
+          u8g.setFontPosTop();
+          u8g.drawStr(0,12,"Incompatible system found");
+          u8g.drawStr(0,20,"Please update the system");
+          u8g.drawStr(0,28,"properly to continue.");
+          u8g.drawStr(0,44,"Press UP+DOWN on boot");
+          u8g.drawStr(0,52,"to enter Recovery Mode.");
+          
+        } while(u8g.nextPage());
+        buzzerTone(300,1000);
+        while(true) {
+          // stop system
+        }
+      }
+      
       break;
 
       case 1:
       // copy EEPROM to RAM
-      alarmHour = EEPROM.read(EEPROM_ALARM_HOUR);
-      alarmMinute = EEPROM.read(EEPROM_ALARM_MINUTE);
-      bluetoothOn = (EEPROM.read(EEPROM_BT_ENABLED) == 1);
+      alarmHour = eeprom.read(EEPROM_ALARM_HOUR);
+      alarmMinute = eeprom.read(EEPROM_ALARM_MINUTE);
+      bluetoothOn = (eeprom.read(EEPROM_BT_ENABLED) == 1);
       updateAlarmEnabled();
       break;
       
@@ -158,6 +201,8 @@ void boot() {
       default:
       break;
     }
+    if(progress == 3) break;
+    progress++;
   }
   delay(2 * SW_MENU_DELAY);
 }
@@ -169,12 +214,12 @@ void homeScreen() {
     int oldHomeCursor = homeCursor;
     int btn = keypad.getPressedButton();
     if(btn == BTN_DOWN) {
-      if(homeCursor == 3)
+      if(homeCursor >= 3)
         homeCursor = 0;
       else
         homeCursor++;
     } else if(btn == BTN_UP) {
-      if(homeCursor == 0)
+      if(homeCursor <= 0)
         homeCursor = 3;
       else
         homeCursor--;
@@ -372,14 +417,13 @@ void serialConsole() {
   }
 }
 void toggleBluetoothStatus() {
-  // TODO: handle in EEPROM!
   if(bluetooth_available) {
     if(bluetoothOn) {
       if(ui.confirm("Disable Bluetooth?","OK","Cancel")) bluetoothOn = false;
     } else {
       if(ui.confirm("Enable Bluetooth?","OK","Cancel")) bluetoothOn = true;
     }
-    EEPROM.write(EEPROM_BT_ENABLED,bluetoothOn);
+    eeprom.write(EEPROM_BT_ENABLED,bluetoothOn);
   } else {
     ui.alert("No Bluetooth found","Please insert BT",true,"OK");
   }
@@ -445,6 +489,9 @@ void watch() {
           timer(); // TODO: SOLVE POINTER BUG!
           Serial.print("exit timer; menuCursor #");
           Serial.println(menuCursor);
+          menuCursor = 1; // debug
+          Serial.print("cursor set; menuCursor #");
+          Serial.println(menuCursor); // what the hell? The cursor remains weird even after setting it!
           break;
           case 2:
           delay(SW_MENU_DELAY);
@@ -660,7 +707,7 @@ void stopwatch() {
 }
 void timer() {
   boolean timerOn = true;
-  int remainingSeconds = 0;
+  uint16_t remainingSeconds = 0;
   char text[9];
   int timHour = 0;
   int timMinute = 0;
@@ -720,6 +767,32 @@ void timer() {
     isAlarm(); // triggers both isAlarm and isTimer
   }
 }
+void recoveryMode() {
+  u8g.firstPage();
+  do {
+    u8g.drawXBMP(0,0,BMP_BOOT_SIZE[0],BMP_BOOT_SIZE[1],BMP_BOOT);
+    u8g.setFont(u8g_font_helvB08);
+    u8g.setFontPosTop();
+    u8g.drawStr(((DISPLAY_WIDTH - u8g.getStrWidth("Recovery Mode"))/2),50,"Recovery Mode");
+    
+  } while(u8g.nextPage());
+  delay(2000);
+  
+  while(true) {
+    u8g.firstPage();
+    do {
+      u8g.setFont(u8g_font_helvB08);
+      u8g.setFontPosTop();
+      u8g.drawStr(0,3,"Recovery not available");
+      u8g.setFont(u8g_font_helvR08);
+      u8g.setFontPosTop();
+      u8g.drawStr(0,17,"Press Back to quit");
+      
+    } while(u8g.nextPage());
+    if(keypad.isButtonPressed(ModKeypad::KEY_BACK)) break;
+  } // can be easily quit using break;
+}
+
 void setTimer() {
   int timerHour = 0;
   int timerMinute = 0;
@@ -736,7 +809,7 @@ void setTimer() {
     timerSeconds = (timerHour * 3600) + (timerMinute * 60);
 }
 
-void buzzerTone(int toneValue, int time) {
+void buzzerTone(int toneValue, int time) { // todo: implement as a class
   tone(BUZZER,toneValue);
   delay(time);
   noTone(BUZZER);
@@ -773,8 +846,7 @@ void isTimer() {
           u8g.drawStr(35,25,"Time is up!");
           u8g.setFont(u8g_font_helvR08);
           u8g.setFontPosTop();
-          Serial.println((DISPLAY_WIDTH - u8g.getStrWidth("Press any key..."))/2);
-          u8g.drawStr(27,40,"Press any key...");
+          u8g.drawStr(28,40,"Press any key...");
         } while(u8g.nextPage());
         if((x % 7) == 0) {
           notificationLED.enable(255);
@@ -795,14 +867,10 @@ void isTimer() {
     }
   }
 }
-/*void updateFormattedHour() {
-  sprintf(formattedHour,"%02d:%02d", hour(), minute());
-  sprintf(fullFormattedHour,"%02d:%02d:%02d",hour(), minute(), second());
-  sprintf(fullFormattedDate,"%02d/%02d/%02d", day(), month(), year() % 100);
-}*/
+
 
 void updateAlarmEnabled() {
-  if(EEPROM.read(EEPROM_ALARM_ENABLED) == 1) {
+  if(eeprom.read(EEPROM_ALARM_ENABLED) == 1) {
     alarmEnabled = true;
   } else {
     alarmEnabled = false;
@@ -810,19 +878,19 @@ void updateAlarmEnabled() {
 }
 void toggleAlarmEnabled() {
   ignoreAlarm = false;
-  if(EEPROM.read(EEPROM_ALARM_ENABLED) == 1) {
+  if(eeprom.read(EEPROM_ALARM_ENABLED) == 1) {
     alarmEnabled = false;
-    EEPROM.write(EEPROM_ALARM_ENABLED,0);
+    eeprom.write(EEPROM_ALARM_ENABLED,0);
   } else {
-    EEPROM.write(EEPROM_ALARM_ENABLED,1);
+    eeprom.write(EEPROM_ALARM_ENABLED,1);
     alarmEnabled = true;
   }  
 }
 void setAlarmTime(int alHour, int alMinute) {
-  EEPROM.write(EEPROM_ALARM_HOUR,alHour);
-  EEPROM.write(EEPROM_ALARM_MINUTE,alMinute);
-  alarmHour = EEPROM.read(EEPROM_ALARM_HOUR);
-  alarmMinute = EEPROM.read(EEPROM_ALARM_MINUTE);
+  eeprom.write(EEPROM_ALARM_HOUR,alHour);
+  eeprom.write(EEPROM_ALARM_MINUTE,alMinute);
+  alarmHour = eeprom.read(EEPROM_ALARM_HOUR);
+  alarmMinute = eeprom.read(EEPROM_ALARM_MINUTE);
 }
 
 /* CHESS */
