@@ -1,4 +1,4 @@
-#include "Bluetooth.h"
+#include "Bluetooth_HC06_Teensy3.h"
 #define BT_SERIAL Serial2
 
 Bluetooth::Bluetooth(int speed) {

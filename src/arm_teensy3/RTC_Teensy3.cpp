@@ -1,6 +1,6 @@
 
 #include <Time.h>
-#include "RTC.h"
+#include "RTC_Teensy3.h"
 
 
 CuniRTC::CuniRTC() {

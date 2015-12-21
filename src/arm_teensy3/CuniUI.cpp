@@ -1,5 +1,4 @@
 #include "CuniUI.h"
-#include <Time.h>
 /*
  * Cuni UI Library - first beta version
  * Seems to work properly for the moment... But I haven't done enough tests on it to confirm it does

@@ -5,12 +5,12 @@
 #include "Watchface.h"
 #include "CuniEEPROM.h"
 #include "CuniUI.h"
-#include "Bluetooth.h"
-#include "Buttons.h"
+#include "Bluetooth_HC06_Teensy3.h"
+#include "Keypad_Teensy3.h"
 #include "LED.h"
-#include "RTC.h"
+#include "RTC_Teensy3.h"
 #include "StopWatch.h"
-#include "PowerSaver.h"
+#include "Governor_Teensy3.h"
 #include "Bitmaps.h"
 
 /* 
@@ -92,7 +92,7 @@ int swSecond = 0;
 int swMillis = 0;
 
 boolean timerSet = false;
-uint16_t timerSeconds = 0;
+unsigned long timerSeconds = 0;
 
 // Chess variables
 uint8_t uiKeyCodeFirst = CHESS_KEY_NONE;
@@ -467,12 +467,12 @@ void watch() {
     if(btn != 0) {
       clicker();
       if(btn == BTN_DOWN) {
-        if(menuCursor == 2)
+        if(menuCursor >= 2)
           menuCursor = 0;
         else
           menuCursor++;
       } else if(btn == BTN_UP) {
-        if(menuCursor == 0)
+        if(menuCursor <= 0)
           menuCursor = 2;
         else
           menuCursor--;
@@ -484,14 +484,18 @@ void watch() {
           break;
           case 1:
           delay(SW_MENU_DELAY);
-          Serial.print("entering timer; menuCursor #");
+          Serial.print("timer");
           Serial.println(menuCursor);
-          timer(); // TODO: SOLVE POINTER BUG!
-          Serial.print("exit timer; menuCursor #");
+          timer();
+          Serial.print("end Timer");
           Serial.println(menuCursor);
-          menuCursor = 1; // debug
-          Serial.print("cursor set; menuCursor #");
-          Serial.println(menuCursor); // what the hell? The cursor remains weird even after setting it!
+          menuCursor = 0;
+          Serial.print("set Cursor");
+          Serial.println(menuCursor);
+          menuCursor = 1;
+          Serial.print("set Cursor");
+          Serial.println(menuCursor);
+
           break;
           case 2:
           delay(SW_MENU_DELAY);
@@ -707,7 +711,7 @@ void stopwatch() {
 }
 void timer() {
   boolean timerOn = true;
-  uint16_t remainingSeconds = 0;
+  unsigned long remainingSeconds = 0;
   char text[9];
   int timHour = 0;
   int timMinute = 0;
@@ -720,30 +724,6 @@ void timer() {
   while(timerSet && timerOn) {
     u8g.firstPage();
     do {
-      int btnId = keypad.getPressedButton();
-      if(btnId != 0) {
-        if(btnId == BTN_BACK) {
-          delay(2*SW_MENU_DELAY);
-          timerOn = false;
-          break;
-        } else if(btnId == BTN_SELECT && !timerSW.isRunning()) {
-          timerSW.start();
-          delay(SW_MENU_DELAY);
-        } else if(btnId == BTN_SELECT && timerSW.isRunning()) {
-          timerSW.stop(); // THIS function must be the generator of the bug!
-          delay(SW_MENU_DELAY);
-        }
-        else if(btnId == BTN_DOWN && !timerSW.isRunning()) { // URGENT DEBUG: freeze when reset or close while not running!
-          timerSW.stop();
-          timerSW.reset();
-          timerSeconds = 0;
-          timSecond = 0;
-          delay(SW_MENU_DELAY);
-          timerOn = false;
-          timerSet = false;
-          break;
-        }
-      }
       remainingSeconds = timerSeconds - timerSW.elapsed();
       timSecond = (remainingSeconds % 60);
       timMinute = ((remainingSeconds / 60) % 60);
@@ -764,6 +744,27 @@ void timer() {
       u8g.drawStr(((DISPLAY_WIDTH - u8g.getStrWidth(text))/2),52,text);
       
     } while(u8g.nextPage());
+    
+    int btnId = keypad.getPressedButton();
+    if(btnId != 0) {
+      if(btnId == BTN_BACK) {
+        delay(SW_MENU_DELAY);
+        timerOn = false;
+      } else if(btnId == BTN_SELECT && !timerSW.isRunning()) {
+        timerSW.start();
+        delay(SW_MENU_DELAY);
+      } else if(btnId == BTN_SELECT && timerSW.isRunning()) {
+        timerSW.stop(); // THIS function must be the generator of the bug!
+        delay(SW_MENU_DELAY);
+      }
+      else if(btnId == BTN_DOWN && !timerSW.isRunning()) { // URGENT DEBUG: freeze when reset or close while not running!
+        timerSW.reset();
+        timerSeconds = 0;
+        timSecond = 0;
+        timerOn = false;
+        timerSet = false;
+      }
+    }
     isAlarm(); // triggers both isAlarm and isTimer
   }
 }
