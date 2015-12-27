@@ -1,9 +1,9 @@
 // TODO: handle buttons here
 // NOTE: the migration to this library is still a work-in-progress! For instance, after migration getPressedButton should return an enum
-#ifndef Buttons_h
+#ifndef Keypad_h
 
 #include "Arduino.h"
-#define Buttons_h
+#define Keypad_h
 
 class ModKeypad {
   public:

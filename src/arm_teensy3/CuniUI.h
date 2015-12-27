@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 #include "U8glib.h"
-#include "Keypad_Teensy3.h"
+#include "Keypad_Teensy3_PullUp.h"
 
 class CuniUI {
   public:

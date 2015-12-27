@@ -1,4 +1,4 @@
-#include "Keypad_Teensy3.h"
+#include "Keypad_Teensy3_PullUp.h"
 
 ModKeypad::ModKeypad(int back, int select, int up, int down) {
   pin_back = back;
