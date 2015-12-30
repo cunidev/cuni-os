@@ -1,5 +1,6 @@
 #ifndef RTC_h
 #define RTC_h
+#define CUNI_HW_RTC_NAME CuniRTC
 
 #include <Arduino.h>
 

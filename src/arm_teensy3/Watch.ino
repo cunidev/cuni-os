@@ -1,7 +1,6 @@
 /* 
  * The BIG ToDo List 
- * - fix some horrible bugs: the Timer bug, and the Snooze RTC bug
- * - handle isAlarm and isTimer with timer-based interrupts!
+ * - fix some horrible bugs: the Timer bug, the Alarm bug (no sound) and the Snooze RTC bug
  * - (maybe) save stopwatch data and latest watchface in EEPROM
  * - use Bluetooth menu (now empty) for Notifications and device info (BT firmware, module name...)
  * - add some apps to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
@@ -29,222 +28,10 @@
  * 
  * Happy hacking!
  */
+
+// before compiling, please set your platform parameters parameters here
+#include "Config.h"
  
-#define CUNI_OS_VERSION_ID 0 // do not edit this!
-#define CUNI_OS_VERSION_LABEL "0.1 alpha"
-
-/* information on version and platform (for future use)
- *  
- * Platform IDs will allow, in the future, to compile the OS for different platforms by changing just one flag
- * 
- * Summary of platform IDs:
- * 0 custom (specify flags manually)
- * 1 Arduino Mega (and other ATMega2560 compatible boards) // NOT SUPPORTED!
- * 2 Teensy 3.0/3.1/3.2
- * 
- * Display ID:
- * 0 other (specify U8GLIB constructor)
- * 1 SSD1306 128x64 SPI OLED display
- * 2 SH1106 128x64 SPI OLED display
- * 
- * Bluetooth module ID
- * 0 custom driver (specify driver path with a flag)
- * 1 HC05 module
- * 2 (...) HM-10 module (CC2540, BLE 4.0)
- * 
- * RTC driver ID
- * 0 built-in RTC / other library (specify path)
- * 1 DS1307 I2C
- * 
- * EEPROM driver
- * 0 Platform default / Other (specify path)
- * 1 CuniEEPROM
- * 
- * Keypad drivers:
- * 0 default (hardware pull-up resistor if supported)/custom (specify path)
- * 1 universal Arduino driver (needs external pull-up resistor)
- */
-
-// PLATFORM 1 does NOT WORK NOW!
-
-#define CUNI_OS_PLATFORM_ID 2
-#define CUNI_HW_DISPLAY_ID 1
-//#define CUNI_HW_DISPLAY_CONSTRUCTOR U8GLIB_SSD1306_128X64 u8g(4, 5, 6, 7)
-//#define CUNI_HW_DISPLAY_WIDTH 128
-//#define CUNI_HW_DISPLAY_HEIGHT 64
-#define CUNI_HW_BLUETOOTH_ID 1
-//#define CUNI_HW_BLUETOOTH_PATH "my_bt_driver.h"
-#define CUNI_HW_RTC_ID 0
-//#define CUNI_HW_RTC_CUSTOM_PATH "my_rtc_driver_.h"
-#define CUNI_HW_EEPROM_ID 0
-//#define CUNI_HW_EEPROM_CUSTOM_PATH "my_eeprom.h"
-#define CUNI_HW_KEYPAD_ID 0
-//#define CUNI_HW_KEYPAD_CUSTOM_PATH "my_keypad.h"
-
-
-#ifndef CUNI_OS_PLATFORM_ID
-  #error CuniOS Error: "CUNI_OS_PLATFORM_ID" not specified
-#elif (CUNI_OS_PLATFORM_ID == 0)
-  #define CUNI_OS_PLATFORM_NAME "Platform Name"
-  #define CUNI_HW_RTC_BUILTIN_SUPPORTED false
-  //#define CUNI_HW_RTC_PATH "my_rtc.h"
-  #define CUNI_HW_KEYPAD_HWPULLUP_SUPPORTED false
-  #define CUNI_HW_KEYPAD_PATH "Keypad_Default.h"
-  //#define CUNI_HW_KEYPAD_HWPULLUP_PATH "my_keypad_pullup.h"
-  #define CUNI_HW_EEPROM_PATH "CuniEEPROM.h" // default
-  #define CUNI_HW_GOVERNOR_PATH "my_governor.h"
-  #define CUNI_HW_PLL_SUPPORTED false
-  
-#elif (CUNI_OS_PLATFORM_ID == 1)
-  #define CUNI_OS_PLATFORM_NAME "ATMEGA2560 (Arduino)"
-  #define CUNI_HW_RTC_BUILTIN_SUPPORTED false
-  #define CUNI_HW_KEYPAD_HWPULLUP_SUPPORTED false
-  #define CUNI_HW_KEYPAD_PATH "Keypad_Default.h"
-  #define CUNI_HW_EEPROM_PATH "CuniEEPROM.h"
-  #define CUNI_HW_GOVERNOR_PATH "Governor_AVR_default.h"
-  #define CUNI_HW_PLL_SUPPORTED false
-  
-#elif (CUNI_OS_PLATFORM_ID == 2)
-  #define CUNI_OS_PLATFORM_NAME "Teensy 3.1"
-  #define CUNI_HW_RTC_BUILTIN_SUPPORTED true
-  #define CUNI_HW_RTC_PATH "RTC_Teensy3.h"
-  #define CUNI_HW_KEYPAD_HWPULLUP_SUPPORTED true
-  #define CUNI_HW_KEYPAD_PATH "Keypad_Default.h"
-  #define CUNI_HW_KEYPAD_HWPULLUP_PATH "Keypad_Teensy3_PullUp.h"
-  #define CUNI_HW_EEPROM_PATH "CuniEEPROM.h"
-  #define CUNI_HW_GOVERNOR_PATH "Governor_Teensy3.h"
-  #define CUNI_HW_PLL_SUPPORTED true  
-  
-#else
-  #error CuniOS Error: Invalid platform ID specified
-#endif
-
-// validation of platform profile
-#ifndef CUNI_OS_PLATFORM_NAME
-  #error CuniOS Error: platform name not specified
-#endif
-#ifndef CUNI_HW_RTC_BUILTIN_SUPPORTED
-  #error CuniOS Error: "CUNI_HW_RTC_BUILTIN_SUPPORTED" not specified
-#elif CUNI_HW_RTC_BUILTIN_SUPPORTED == true
-  #ifndef CUNI_HW_RTC_PATH
-    #error CuniOS Error: no driver path for built-in RTC specified
-  #endif
-#endif
-#ifndef CUNI_HW_KEYPAD_PATH
-  #error CuniOS Error: no keypad driver path specified
-#endif
-#ifndef CUNI_HW_KEYPAD_HWPULLUP_SUPPORTED
-  #error CuniOS Error: "CUNI_HW_KEYPAD_HWPULLUP_SUPPORTED" not specified
-#elif CUNI_HW_KEYPAD_HWPULLUP_SUPPORTED == true
-  #ifndef CUNI_HW_KEYPAD_HWPULLUP_PATH
-    #error CuniOS Error: no driver path for keypad (internal pull-up resistor) specified
-  #endif
-#endif
-#ifndef CUNI_HW_EEPROM_PATH
-  #error CuniOS Error: no EEPROM driver path specified
-#endif
-#ifndef CUNI_HW_GOVERNOR_PATH
-  #error CuniOS Error: no CPU governor driver path specified
-#endif
-#ifndef CUNI_HW_PLL_SUPPORTED
-  #error CuniOS Error: "CUNI_HW_PLL_SUPPORTED" not specified
-#endif
-// end of platform validation
-
-
-#ifndef CUNI_HW_DISPLAY_ID
-  #error CuniOS Error: "CUNI_HW_DISPLAY_ID" not specified
-#elif CUNI_HW_DISPLAY_ID == 0
-  #ifndef CUNI_HW_DISPLAY_CONSTRUCTOR
-    #error CuniOS Error: "CUNI_HW_DISPLAY_CONSTRUCTOR" not specified
-  #endif
-  #ifndef CUNI_HW_DISPLAY_WIDTH
-    #error CuniOS Error: "CUNI_HW_DISPLAY_WIDTH" not specified
-  #endif
-  #ifndef CUNI_HW_DISPLAY_HEIGHT
-    #error CuniOS Error: "CUNI_HW_DISPLAY_HEIGHT" not specified
-  #endif
-#elif CUNI_HW_DISPLAY_ID == 1
-  #define CUNI_HW_DISPLAY_CONSTRUCTOR U8GLIB_SSD1306_128X64 u8g(4, 5, 6, 7)
-  #define CUNI_HW_DISPLAY_WIDTH 128
-  #define CUNI_HW_DISPLAY_HEIGHT 64
-#elif CUNI_HW_DISPLAY_ID == 2
-  #define CUNI_HW_DISPLAY_CONSTRUCTOR U8GLIB_SH1106_128X64 u8g(4, 5, 6, 7)
-  #define CUNI_HW_DISPLAY_WIDTH 128
-  #define CUNI_HW_DISPLAY_HEIGHT 64
-#else
-  #error CuniOS Error: unknown display driver ID
-#endif
-
-#ifndef CUNI_HW_BLUETOOTH_ID
-  #error CuniOS Error: "CUNI_HW_BLUETOOTH_ID" not specified
-#elif CUNI_HW_BLUETOOTH_ID == 0
-  #ifndef CUNI_HW_BLUETOOTH_PATH
-    #error CuniOS Error: "CUNI_HW_BLUETOOTH_PATH" not specified
-  #endif
-#elif CUNI_HW_BLUETOOTH_ID == 1
-  #define CUNI_HW_BLUETOOTH_PATH "Bluetooth_HC05.h"
-#elif CUNI_HW_BLUETOOTH_ID == 2
-  #define CUNI_HW_BLUETOOTH_PATH "Bluetooth_HM10.h"
-#else
-  #error CuniOS Error: unknown Bluetooth driver ID
-#endif
-
-#ifndef CUNI_HW_RTC_ID
-  #error CuniOS Error: "CUNI_HW_RTC_ID" not specified
-#elif CUNI_HW_RTC_ID == 0
-  #ifndef CUNI_HW_RTC_CUSTOM_PATH
-    #if CUNI_HW_RTC_BUILTIN_SUPPORTED != true
-      #error CuniOS Error: RTC custom driver path not specified
-    #endif
-  #else
-    #ifndef CUNI_HW_RTC_PATH
-      #undef CUNI_HW_RTC_PATH
-    #endif
-    #define CUNI_HW_RTC_PATH  CUNI_HW_RTC_CUSTOM_PATH
-  #endif
-#elif CUNI_HW_RTC_ID == 1
-  #define CUNI_HW_RTC_PATH "RTC_DS1307.h"
-#else
-  #error CuniOS Error: unknown RTC driver ID
-#endif
-
-#ifndef CUNI_HW_EEPROM_ID
-  #error CuniOS Error: "CUNI_HW_EEPROM_ID" not specified
-#elif CUNI_HW_EEPROM_ID == 0
-  #ifdef CUNI_HW_EEPROM_CUSTOM_PATH
-    #undef CUNI_HW_EEPROM_PATH
-    #define CUNI_HW_EEPROM_PATH CUNI_HW_EEPROM_CUSTOM_PATH
-  #endif
-#elif CUNI_HW_EEPROM_ID == 1
-  #undef CUNI_HW_EEPROM_PATH
-  #define CUNI_HW_EEPROM_PATH "CuniEEPROM.h"
-#else
-  #error CuniOS Error: unknown EEPROM driver ID
-#endif
-
-#ifndef CUNI_HW_KEYPAD_ID
-  #error CuniOS Error: "CUNI_HW_KEYPAD_ID" not specified
-#elif CUNI_HW_KEYPAD_ID == 0
-  #ifndef CUNI_HW_CUSTOM_KEYPAD_PATH
-    #if CUNI_HW_KEYPAD_HWPULLUP_SUPPORTED == true
-      #undef CUNI_HW_KEYPAD_PATH
-      #define CUNI_HW_KEYPAD_PATH CUNI_HW_KEYPAD_HWPULLUP_PATH
-    #else
-      #error CuniOS Error: "CUNI_HW_KEYPAD_ID" not specified
-    #endif
-  #else
-    #undef CUNI_HW_KEYPAD_PATH
-    #define CUNI_HW_KEYPAD_PATH CUNI_HW_CUSTOM_KEYPAD_PATH
-  #endif
-  
-#elif CUNI_HW_KEYPAD_ID == 1
-  #undef CUNI_HW_KEYPAD_PATH
-  #define CUNI_HW_KEYPAD_PATH "Keypad_Default.h"
-#else
-  #error CuniOS Error: unknown keypad driver ID
-#endif
-
 
 // beginning of the REAL software, finally! :)
 
@@ -285,7 +72,7 @@ const int EEPROM_ADDR_ALARM_HOUR = 0;
 const int EEPROM_ADDR_ALARM_MINUTE = 1;
 const int EEPROM_ADDR_ALARM_ENABLED = 2;
 const int EEPROM_ADDR_BT_ENABLED = 3;
-const int EEPROM_ADDR_LATEST_WATCHFACE = 4; // to be implemented
+const int EEPROM_ADDR_LATEST_WATCHFACE = 4;
 const int EEPROM_ADDR_OS_VERSION = 511;
 const int SW_MENU_DELAY = 200; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
 const int BTN_RADIUS = 1; // for CuniUILib
@@ -327,13 +114,17 @@ CUNI_HW_DISPLAY_CONSTRUCTOR; // preprocessor macro, specified above
 
 StopWatch sw;    // MILLIS (default)
 StopWatch timerSW(StopWatch::SECONDS);
-Bluetooth bt(9600);
-LED notificationLED(LED_PIN);
-PowerSave pwrsave;
-ModKeypad keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
+
+CUNI_HW_BLUETOOTH_NAME bt(9600);
+CUNI_HW_GOVERNOR_NAME pwrsave;
+CUNI_HW_KEYPAD_NAME keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
+CUNI_HW_RTC_NAME rtc;
+CUNI_HW_EEPROM_NAME eeprom;
+
 CuniUI ui(u8g, keypad, 128, 64);
-CuniRTC rtc;
-CuniEEPROM eeprom;
+LED notificationLED(LED_PIN);
+
+Watchface watchface(u8g, rtc, eeprom, EEPROM_ADDR_LATEST_WATCHFACE);
 
 // TEENSY ONLY!
 IntervalTimer interruptTimer;
@@ -349,7 +140,7 @@ void setup() {
     // clear screen
   } while(u8g.nextPage());
   
-  if(keypad.isButtonPressed(ModKeypad::KEY_BUP) && keypad.isButtonPressed(ModKeypad::KEY_BDOWN)) {
+  if(keypad.isButtonPressed(CUNI_HW_KEYPAD_NAME::KEY_BUP) && keypad.isButtonPressed(CUNI_HW_KEYPAD_NAME::KEY_BDOWN)) {
     buzzerTone(350,200);
     buzzerTone(450,200);
     buzzerTone(550,200);
@@ -357,7 +148,7 @@ void setup() {
     recoveryMode(); // No, the code execution doesn't necessarily stop here...
   }
   boot();
-  interruptTimer.begin(isAlarm,1000000);
+  interruptTimer.begin(interruptLoop,1000000);
 
 }
 
@@ -437,7 +228,7 @@ void homeScreen() {
   boolean home = true;
   int homeCursor = 0;
   while(home) {
-    isAlarm();  
+    //isAlarm();  
     int oldHomeCursor = homeCursor;
     int btn = keypad.getPressedButton();
     if(btn == BTN_DOWN) {
@@ -536,7 +327,7 @@ void settingsScreen() {
   int menuCursor = 0;
   boolean settings = true;
   while(settings) {
-    isAlarm();  
+    //isAlarm();  
     int oldMenuCursor = menuCursor;
     int btn = keypad.getPressedButton();
     if(btn != 0) {
@@ -622,7 +413,7 @@ void serialConsole() {
   boolean serial = true;
   Serial.println("READY");
   while(serial) {
-    isAlarm();  
+    //isAlarm();  
     u8g.firstPage();
     do {  
       drawStatusBar();
@@ -658,10 +449,10 @@ void toggleBluetoothStatus() {
 void clock() {
   boolean clock = true;
   while(clock) {
-    isAlarm();
+    //isAlarm();
     u8g.firstPage();
     do {  
-        drawWatchFace(rtc.getFormattedHour(), rtc.getFullFormattedHour(), rtc.getFullFormattedDate(), u8g);
+        watchface.drawWatchFace();
     } while( u8g.nextPage());
     int btn = keypad.getPressedButton();
     if(btn == BTN_SELECT) {
@@ -669,10 +460,10 @@ void clock() {
       delay(SW_MENU_DELAY);
       clock = false;
     } else if(btn == BTN_DOWN) {
-      switchWatchFacePrevious();
+      watchface.previousWatchFace();
       delay(SW_MENU_DELAY);
     } else if(btn == BTN_UP) {
-      switchWatchFace();
+      watchface.nextWatchFace();
       delay(SW_MENU_DELAY);
     } else if(btn == BTN_BACK) {
       u8g.firstPage();
@@ -688,7 +479,7 @@ void watch() {
   boolean watch = true;
   int menuCursor = 0;
   while(watch) {
-    isAlarm();  
+    //isAlarm();  
     int oldMenuCursor = menuCursor;
     int btn = keypad.getPressedButton();
     if(btn != 0) {
@@ -992,7 +783,7 @@ void timer() {
         timerSet = false;
       }
     }
-    isAlarm(); // triggers both isAlarm and isTimer
+    //isAlarm(); // triggers both isAlarm and isTimer
   }
 }
 void recoveryMode() {
@@ -1017,7 +808,7 @@ void recoveryMode() {
       u8g.drawStr(0,17,"Press Back to quit");
       
     } while(u8g.nextPage());
-    if(keypad.isButtonPressed(ModKeypad::KEY_BACK)) break;
+    if(keypad.isButtonPressed(CUNI_HW_KEYPAD_NAME::KEY_BACK)) break;
   } // can be easily quit using break;
 }
 
@@ -1049,14 +840,16 @@ void clicker() {
 
 
 
-void isAlarm() {
+void interruptLoop() {
   noInterrupts();
   isTimer();
-  if(lostAlarm) {
-    lostAlarm = false;
-  }
-  if(alarmEnabled && hour() == alarmHour && minute() == alarmMinute)
+  if(alarmEnabled && hour() == alarmHour && minute() == alarmMinute) {
+    if(lostAlarm) {
+      lostAlarm = false;
+    }
     alarmLoop();
+  }
+    
   interrupts();
 }
 void isTimer() {

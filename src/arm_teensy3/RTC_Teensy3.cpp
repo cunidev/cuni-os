@@ -1,7 +1,5 @@
-
 #include <Time.h>
 #include "RTC_Teensy3.h"
-
 
 CuniRTC::CuniRTC() {
   // initialize the RTC, if needed (for example, open i2c communication bus)

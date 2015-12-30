@@ -1,14 +1,13 @@
-// TODO: handle buttons here
-// NOTE: the migration to this library is still a work-in-progress! For instance, after migration getPressedButton should return an enum
 #ifndef Keypad_h
+#define Keypad_h
+#define CUNI_HW_KEYPAD_NAME Teensy3Keypad
 
 #include "Arduino.h"
-#define Keypad_h
 
-class ModKeypad {
+class Teensy3Keypad {
   public:
+    Teensy3Keypad(int back, int select, int up, int down);
     enum Buttons { KEY_BACK, KEY_SELECT, KEY_BUP, KEY_BDOWN };
-    ModKeypad(int back, int select, int up, int down);
     int getPressedButton();
     boolean isButtonPressed(enum Buttons btn_label);
     

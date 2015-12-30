@@ -3,11 +3,12 @@
 
 #include "Arduino.h"
 #include "U8glib.h"
-#include "Keypad_Teensy3_PullUp.h"
+#include "Config.h"
+#include CUNI_HW_KEYPAD_PATH
 
 class CuniUI {
   public:
-    CuniUI(U8GLIB &u8gl, ModKeypad &keys, int display_w, int display_h) : u8g(u8gl), keypad(keys) {   display_width = display_w; display_height = display_h; };
+    CuniUI(U8GLIB &u8gl, CUNI_HW_KEYPAD_NAME &keys, int display_w, int display_h);
     void alert(char title[], char text[], boolean showButton, char btnText[]);
     int dialog(char text[], char btnYes[], char btnNo[], boolean allowCancel);
     boolean confirm(char text[], char btnYes[], char btnNo[]);
@@ -30,7 +31,7 @@ class CuniUI {
     
   private:
     U8GLIB &u8g;
-    ModKeypad &keypad;
+    CUNI_HW_KEYPAD_NAME &keypad;
     int display_width;
     int display_height;
     const int BTN_RADIUS = 1; // you can edit this to edit button radius

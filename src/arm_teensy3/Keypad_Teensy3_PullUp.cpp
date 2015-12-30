@@ -1,6 +1,8 @@
+#include "Config.h"
+
 #include "Keypad_Teensy3_PullUp.h"
 
-ModKeypad::ModKeypad(int back, int select, int up, int down) {
+Teensy3Keypad::Teensy3Keypad(int back, int select, int up, int down) {
   pin_back = back;
   pin_select = select;
   pin_up = up;
@@ -10,14 +12,14 @@ ModKeypad::ModKeypad(int back, int select, int up, int down) {
   pinMode(up,INPUT_PULLUP);
   pinMode(down,INPUT_PULLUP);
 }
-int ModKeypad::getPressedButton() {
-  if(ModKeypad::isButtonPressed(ModKeypad::KEY_BACK)) return pin_back;
-  if(ModKeypad::isButtonPressed(ModKeypad::KEY_SELECT)) return pin_select;
-  if(ModKeypad::isButtonPressed(ModKeypad::KEY_BUP)) return pin_up;
-  if(ModKeypad::isButtonPressed(ModKeypad::KEY_BDOWN)) return pin_down;
+int Teensy3Keypad::getPressedButton() {
+  if(Teensy3Keypad::isButtonPressed(Teensy3Keypad::KEY_BACK)) return pin_back;
+  if(Teensy3Keypad::isButtonPressed(Teensy3Keypad::KEY_SELECT)) return pin_select;
+  if(Teensy3Keypad::isButtonPressed(Teensy3Keypad::KEY_BUP)) return pin_up;
+  if(Teensy3Keypad::isButtonPressed(Teensy3Keypad::KEY_BDOWN)) return pin_down;
   return 0;
 }
-boolean ModKeypad::isButtonPressed(enum Buttons btn_label) {
+boolean Teensy3Keypad::isButtonPressed(enum Buttons btn_label) {
   int checkPin;
   switch(btn_label) {
     case KEY_BACK:

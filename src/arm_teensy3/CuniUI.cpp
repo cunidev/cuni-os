@@ -9,6 +9,11 @@
  * - alert(...): check for events; boolean to be able to use the back key to dismiss; auto-dismiss in N seconds
  * - (maybe) add clicker sound to be enabled or disabled with functions
  */
+
+CuniUI::CuniUI(U8GLIB &u8gl, CUNI_HW_KEYPAD_NAME &keys, int display_w, int display_h) : u8g(u8gl), keypad(keys) {
+  display_width = display_w; display_height = display_h;
+}
+
 void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[]) {
   while(true) {
     u8g.firstPage();

@@ -3,8 +3,9 @@
  * (can be adapted to different processors, like Atmel MCUs, very easily)
  */
 
-#ifndef PowerSaver_h
-#define PowerSaver_h
+#ifndef PowerSave_h
+#define PowerSave_h
+#define CUNI_HW_GOVERNOR_NAME PowerSave
 #include <Arduino.h>
 #include <Snooze.h>
 

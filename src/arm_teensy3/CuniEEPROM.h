@@ -2,6 +2,7 @@
 // this class is fully compatible with Arduino EEPROM Library: on Arduino, it simply links to EEPROM.h functions
 #ifndef CuniEEPROM_h
 #define CuniEEPROM_h
+#define CUNI_HW_EEPROM_NAME CuniEEPROM
 
 #include "Arduino.h"
 #include <EEPROM.h>

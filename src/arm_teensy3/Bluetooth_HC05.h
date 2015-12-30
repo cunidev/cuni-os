@@ -1,14 +1,12 @@
-/*
- * Tiny Teensy library for the HC-06 Bluetooth module
- */
 #ifndef Bluetooth_h
 #define Bluetooth_h
+#define CUNI_HW_BLUETOOTH_NAME HC05
 
 #include "Arduino.h"
 
-class Bluetooth {
+class HC05 {
   public:
-    Bluetooth(int speed);
+    HC05(int speed);
     boolean isReady();
     // boolean setName(char *name);
     // boolean setPin(unsigned int pin);
