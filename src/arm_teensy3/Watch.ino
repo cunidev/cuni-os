@@ -1,6 +1,6 @@
 /* 
  * The BIG ToDo List 
- * - fix some horrible bugs: the Timer bug, the Alarm bug (no sound) and the Snooze RTC bug
+ * - fix some horrible bugs: the Alarm bug (no sound) and the Snooze RTC bug
  * - (maybe) save stopwatch data and latest watchface in EEPROM
  * - use Bluetooth menu (now empty) for Notifications and device info (BT firmware, module name...)
  * - add some apps to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
@@ -109,8 +109,6 @@ uint8_t uiKeyCodeSecond = CHESS_KEY_NONE;
 uint8_t uiKeyCode = CHESS_KEY_NONE;
 
 CUNI_HW_DISPLAY_CONSTRUCTOR; // preprocessor macro, specified above
-//U8GLIB_SSD1306_128X64 u8g(4, 5, 6, 7);
-////U8GLIB_SH1106_128X64 u8g(4, 5, 6, 7); // replace with this or another constructor if you notice pixels shifted by 2 positions on Y axis... 
 
 StopWatch sw;    // MILLIS (default)
 StopWatch timerSW(StopWatch::SECONDS);
@@ -502,18 +500,7 @@ void watch() {
           break;
           case 1:
           delay(SW_MENU_DELAY);
-          Serial.print("timer");
-          Serial.println(menuCursor);
           timer();
-          Serial.print("end Timer");
-          Serial.println(menuCursor);
-          menuCursor = 0;
-          Serial.print("set Cursor");
-          Serial.println(menuCursor);
-          menuCursor = 1;
-          Serial.print("set Cursor");
-          Serial.println(menuCursor);
-
           break;
           case 2:
           delay(SW_MENU_DELAY);
@@ -730,7 +717,7 @@ void stopwatch() {
 void timer() {
   boolean timerOn = true;
   unsigned long remainingSeconds = 0;
-  char text[9];
+  char text[30];
   int timHour = 0;
   int timMinute = 0;
   int timSecond = 0;
@@ -772,18 +759,18 @@ void timer() {
         timerSW.start();
         delay(SW_MENU_DELAY);
       } else if(btnId == BTN_SELECT && timerSW.isRunning()) {
-        timerSW.stop(); // THIS function must be the generator of the bug!
+        timerSW.stop();
         delay(SW_MENU_DELAY);
       }
-      else if(btnId == BTN_DOWN && !timerSW.isRunning()) { // URGENT DEBUG: freeze when reset or close while not running!
+      else if(btnId == BTN_DOWN && !timerSW.isRunning()) {
         timerSW.reset();
+        delay(SW_MENU_DELAY);
         timerSeconds = 0;
         timSecond = 0;
         timerOn = false;
         timerSet = false;
       }
     }
-    //isAlarm(); // triggers both isAlarm and isTimer
   }
 }
 void recoveryMode() {
