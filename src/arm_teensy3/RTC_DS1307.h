@@ -1,13 +1,12 @@
 #ifndef RTC_h
 #define RTC_h
-#define CUNI_HW_RTC_NAME CuniRTC
+#define CUNI_HW_RTC_NAME DS1307RTC
 
 #include <Arduino.h>
-#include <Time.h>
 
-class CuniRTC {
+class DS1307RTC {
   public:
-    CuniRTC();
+    DS1307RTC();
     int getYear();
     int getMonth();
     int getDay();

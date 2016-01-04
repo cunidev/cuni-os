@@ -3,6 +3,7 @@
  * (can be adapted to different processors, like Atmel MCUs, very easily)
  */
 
+#if CUNI_OS_PLATFORM_ID == 2 // Teensy only!
 #ifndef PowerSave_h
 #define PowerSave_h
 #define CUNI_HW_GOVERNOR_NAME PowerSave
@@ -16,4 +17,5 @@ class PowerSave {
     SnoozeBlock snooze;
 };
 
+#endif
 #endif

@@ -1,3 +1,5 @@
+#include "Config.h"
+#if CUNI_OS_PLATFORM_ID == 2
 #include "Governor_Teensy3.h"
 
 void PowerSave::sleepUntilButtonWake(int buttonPin) {
@@ -5,3 +7,4 @@ void PowerSave::sleepUntilButtonWake(int buttonPin) {
   Snooze.deepSleep(snooze);
 }
 
+#endif

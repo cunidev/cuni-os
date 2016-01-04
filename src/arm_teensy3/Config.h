@@ -37,6 +37,7 @@
 
 // PLATFORM 1 does NOT WORK NOW!
 
+
 #define CUNI_OS_PLATFORM_ID 2
 #define CUNI_HW_DISPLAY_ID 1
 //#define CUNI_HW_DISPLAY_CONSTRUCTOR U8GLIB_SSD1306_128X64 u8g(4, 5, 6, 7)
@@ -65,6 +66,7 @@
   #define CUNI_HW_EEPROM_PATH "CuniEEPROM.h" // default
   #define CUNI_HW_GOVERNOR_PATH "my_governor.h"
   #define CUNI_HW_PLL_SUPPORTED false
+  #define CUNI_HW_TIMER_INTERRUPT_PATH "custom_path.h"  
   
 #elif (CUNI_OS_PLATFORM_ID == 1)
   #define CUNI_OS_PLATFORM_NAME "ATMEGA2560 (Arduino)"
@@ -73,7 +75,8 @@
   #define CUNI_HW_KEYPAD_PATH "Keypad_Default.h"
   #define CUNI_HW_EEPROM_PATH "CuniEEPROM.h"
   #define CUNI_HW_GOVERNOR_PATH "Governor_AVR_default.h"
-  #define CUNI_HW_PLL_SUPPORTED false
+  #define CUNI_HW_PLL_SUPPORTED true
+  #define CUNI_HW_TIMER_INTERRUPT_PATH "TimerInterrupt_AVR.h"  
   
 #elif (CUNI_OS_PLATFORM_ID == 2)
   #define CUNI_OS_PLATFORM_NAME "Teensy 3.1"
@@ -84,7 +87,8 @@
   #define CUNI_HW_KEYPAD_HWPULLUP_PATH "Keypad_Teensy3_PullUp.h"
   #define CUNI_HW_EEPROM_PATH "CuniEEPROM.h"
   #define CUNI_HW_GOVERNOR_PATH "Governor_Teensy3.h"
-  #define CUNI_HW_PLL_SUPPORTED true  
+  #define CUNI_HW_PLL_SUPPORTED false
+  #define CUNI_HW_TIMER_INTERRUPT_PATH "TimerInterrupt_Teensy.h"  
   
 #else
   #error CuniOS Error: Invalid platform ID specified
@@ -119,6 +123,9 @@
 #endif
 #ifndef CUNI_HW_PLL_SUPPORTED
   #error CuniOS Error: "CUNI_HW_PLL_SUPPORTED" not specified
+#endif
+#ifndef CUNI_HW_TIMER_INTERRUPT_PATH
+  #error CuniOS Error: "CUNI_HW_TIMER_INTERRUPT_PATH" not specified
 #endif
 // end of platform validation
 
@@ -165,7 +172,7 @@
   #error CuniOS Error: "CUNI_HW_RTC_ID" not specified
 #elif CUNI_HW_RTC_ID == 0
   #ifndef CUNI_HW_RTC_CUSTOM_PATH
-    #if CUNI_HW_RTC_BUILTIN_SUPPORTED != true
+    #if CUNI_HW_RTC_BUILTIN_SUPPORTED != true      
       #error CuniOS Error: RTC custom driver path not specified
     #endif
   #else

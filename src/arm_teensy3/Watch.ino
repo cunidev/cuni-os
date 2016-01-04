@@ -48,6 +48,7 @@
 #include CUNI_HW_RTC_PATH
 #include CUNI_HW_GOVERNOR_PATH
 #include CUNI_HW_EEPROM_PATH
+#include CUNI_HW_TIMER_INTERRUPT_PATH
 
 #include "LED.h"
 // coming soon: Buzzer.h
@@ -68,12 +69,14 @@ const int BTN_UP = 11;
 const int BTN_DOWN = 8;
 const int BUZZER = 21;
 const int LED_PIN = A6;
-const int EEPROM_ADDR_ALARM_HOUR = 0;
-const int EEPROM_ADDR_ALARM_MINUTE = 1;
-const int EEPROM_ADDR_ALARM_ENABLED = 2;
-const int EEPROM_ADDR_BT_ENABLED = 3;
-const int EEPROM_ADDR_LATEST_WATCHFACE = 4;
-const int EEPROM_ADDR_OS_VERSION = 511;
+
+const int EEPROM_ADDR_OS_VERSION = 0;
+const int EEPROM_ADDR_ALARM_HOUR = 1;
+const int EEPROM_ADDR_ALARM_MINUTE = 2;
+const int EEPROM_ADDR_ALARM_ENABLED = 3;
+const int EEPROM_ADDR_BT_ENABLED = 4;
+const int EEPROM_ADDR_LATEST_WATCHFACE = 5;
+
 const int SW_MENU_DELAY = 200; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
 const int BTN_RADIUS = 1; // for CuniUILib
 const int DISPLAY_WIDTH = CUNI_HW_DISPLAY_WIDTH;
@@ -94,6 +97,7 @@ char stopwatch_lap4[15] = "#4 --:--:--:--"; // obviously, this could be managed 
 int statusBarCounter = 0;
 int alarmHour = 0;
 int alarmMinute = 0;
+boolean interruptBusy = false;
 
 int swHour = 0;
 int swMinute = 0;
@@ -118,15 +122,14 @@ CUNI_HW_GOVERNOR_NAME pwrsave;
 CUNI_HW_KEYPAD_NAME keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
 CUNI_HW_RTC_NAME rtc;
 CUNI_HW_EEPROM_NAME eeprom;
+CUNI_HW_TIMER_INTERRUPT_NAME interruptTimer;
 
 CuniUI ui(u8g, keypad, 128, 64);
 LED notificationLED(LED_PIN);
 
 Watchface watchface(u8g, rtc, eeprom, EEPROM_ADDR_LATEST_WATCHFACE);
 
-// TEENSY ONLY!
-IntervalTimer interruptTimer;
-
+// TEENSY ONLY! (TODO: handle interrupts in dedicated class)
 
 void setup() {
   Serial.begin(9600);
@@ -146,7 +149,7 @@ void setup() {
     recoveryMode(); // No, the code execution doesn't necessarily stop here...
   }
   boot();
-  interruptTimer.begin(interruptLoop,1000000);
+  interruptTimer.start(interruptLoop);
 
 }
 
@@ -226,7 +229,6 @@ void homeScreen() {
   boolean home = true;
   int homeCursor = 0;
   while(home) {
-    //isAlarm();  
     int oldHomeCursor = homeCursor;
     int btn = keypad.getPressedButton();
     if(btn == BTN_DOWN) {
@@ -325,7 +327,7 @@ void settingsScreen() {
   int menuCursor = 0;
   boolean settings = true;
   while(settings) {
-    //isAlarm();  
+
     int oldMenuCursor = menuCursor;
     int btn = keypad.getPressedButton();
     if(btn != 0) {
@@ -411,7 +413,6 @@ void serialConsole() {
   boolean serial = true;
   Serial.println("READY");
   while(serial) {
-    //isAlarm();  
     u8g.firstPage();
     do {  
       drawStatusBar();
@@ -439,7 +440,7 @@ void toggleBluetoothStatus() {
     } else {
       if(ui.confirm("Enable Bluetooth?","OK","Cancel")) bluetoothOn = true;
     }
-    eeprom.write(EEPROM_ADDR_BT_ENABLED,bluetoothOn);
+    eeprom.update(EEPROM_ADDR_BT_ENABLED,bluetoothOn);
   } else {
     ui.alert("No Bluetooth found","Please insert BT",true,"OK");
   }
@@ -447,7 +448,6 @@ void toggleBluetoothStatus() {
 void clock() {
   boolean clock = true;
   while(clock) {
-    //isAlarm();
     u8g.firstPage();
     do {  
         watchface.drawWatchFace();
@@ -477,7 +477,6 @@ void watch() {
   boolean watch = true;
   int menuCursor = 0;
   while(watch) {
-    //isAlarm();  
     int oldMenuCursor = menuCursor;
     int btn = keypad.getPressedButton();
     if(btn != 0) {
@@ -504,14 +503,17 @@ void watch() {
           break;
           case 2:
           delay(SW_MENU_DELAY);
-          char *txt;
+          char txt[8];
+          char txt2[19];
+          sprintf(txt2,"Alarm set to %02d:%02d",alarmHour,alarmMinute);
           if(alarmEnabled) {
-            txt = "Disable";
+            sprintf(txt,"Disable");
           } else {
-            txt = "Enable";
+            sprintf(txt,"Enable");
           }
           int result;
-          result = ui.dialog("Alarm","Set time",txt,true);
+          
+          result = ui.dialog(txt2,"Set time",txt,true);
           if(result == 1) {
             setAlarm();
           } else if(result == 2) {
@@ -819,7 +821,6 @@ void buzzerTone(int toneValue, int time) { // todo: implement as a class
   tone(BUZZER,toneValue);
   delay(time);
   noTone(BUZZER);
-  digitalWrite(BUZZER,LOW);
 }
 void clicker() {
   buzzerTone(70,15);
@@ -828,16 +829,17 @@ void clicker() {
 
 
 void interruptLoop() {
-  noInterrupts();
-  isTimer();
-  if(alarmEnabled && hour() == alarmHour && minute() == alarmMinute) {
-    if(lostAlarm) {
-      lostAlarm = false;
+  if(!interruptBusy) {
+    interruptBusy = true;
+    isTimer();
+    if(alarmEnabled && rtc.getHour() == alarmHour && rtc.getMinute() == alarmMinute) {
+      if(lostAlarm) {
+        lostAlarm = false;
+      }
+      alarmLoop();
     }
-    alarmLoop();
   }
-    
-  interrupts();
+  interruptBusy = false;
 }
 void isTimer() {
   int x = 0;
@@ -890,15 +892,15 @@ void toggleAlarmEnabled() {
   ignoreAlarm = false;
   if(eeprom.read(EEPROM_ADDR_ALARM_ENABLED) == 1) {
     alarmEnabled = false;
-    eeprom.write(EEPROM_ADDR_ALARM_ENABLED,0);
+    eeprom.update(EEPROM_ADDR_ALARM_ENABLED,0);
   } else {
-    eeprom.write(EEPROM_ADDR_ALARM_ENABLED,1);
+    eeprom.update(EEPROM_ADDR_ALARM_ENABLED,1);
     alarmEnabled = true;
   }  
 }
 void setAlarmTime(int alHour, int alMinute) {
-  eeprom.write(EEPROM_ADDR_ALARM_HOUR,alHour);
-  eeprom.write(EEPROM_ADDR_ALARM_MINUTE,alMinute);
+  eeprom.update(EEPROM_ADDR_ALARM_HOUR,alHour);
+  eeprom.update(EEPROM_ADDR_ALARM_MINUTE,alMinute);
   alarmHour = eeprom.read(EEPROM_ADDR_ALARM_HOUR);
   alarmMinute = eeprom.read(EEPROM_ADDR_ALARM_MINUTE);
 }

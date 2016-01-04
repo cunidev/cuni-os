@@ -1,21 +1,22 @@
+//TODO: un-dummy this library ;)
+
 #include "Config.h"
-#if CUNI_OS_PLATFORM_ID == 2
-#include "RTC_Teensy3.h"
+#include "RTC_DS1307.h"
 
-CuniRTC::CuniRTC() {
-  // initialize the RTC, if needed (for example, open i2c communication bus)
+DS1307RTC::DS1307RTC() {
+  // initialize the RTC
 }
 
-int CuniRTC::getYear() {
-  return year();
+int DS1307RTC::getYear() {
+  return 1970;
 }
-int CuniRTC::getMonth() {
-  return month();
+int DS1307RTC::getMonth() {
+  return 1;
 }
-int CuniRTC::getDay() {
-  return day();
+int DS1307RTC::getDay() {
+  return 1;
 }
-int CuniRTC::getWeekDay() {
+int DS1307RTC::getWeekDay() {
   // some RTCs allow this by default, however, this workaround should work on every RTC
   static int t[] = { 0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4 };
   int y = this->getYear();
@@ -24,36 +25,35 @@ int CuniRTC::getWeekDay() {
   y -= m < 3;
   return ( y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
 }
-int CuniRTC::getHour() {
-  return hour();
+int DS1307RTC::getHour() {
+  return 0;
 }
-int CuniRTC::getMinute() {
-  return minute();
+int DS1307RTC::getMinute() {
+  return 0;
 }
-int CuniRTC::getSecond() {
-  return second();
+int DS1307RTC::getSecond() {
+  return 0;
 }
-char* CuniRTC::getFormattedHour() {
+char* DS1307RTC::getFormattedHour() {
   updateFormattedHour();
   return formattedHour;
 }
-char* CuniRTC::getFullFormattedHour() {
+char* DS1307RTC::getFullFormattedHour() {
   updateFormattedHour();
   return fullFormattedHour;
 }
-char *CuniRTC::getFormattedDate() {
+char *DS1307RTC::getFormattedDate() {
   updateFormattedHour();
   return formattedDate;
 }
-char *CuniRTC::getFullFormattedDate() {
+char *DS1307RTC::getFullFormattedDate() {
   updateFormattedHour();
   return fullFormattedDate;
 }
 
-void CuniRTC::updateFormattedHour() {
+void DS1307RTC::updateFormattedHour() {
   sprintf(formattedHour,"%02d:%02d", getHour(), getMinute());
   sprintf(fullFormattedHour,"%02d:%02d:%02d", getHour(), getMinute(), getSecond());
   sprintf(formattedDate,"%02d/%02d", getDay(), getMonth());
   sprintf(fullFormattedDate,"%02d/%02d/%02d", getDay(), getMonth(), getYear() % 100);
 }
-#endif

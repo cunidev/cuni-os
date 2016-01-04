@@ -1,6 +1,6 @@
 #include "Watchface.h"
 
-Watchface::Watchface(U8GLIB &u8g, CuniRTC &rtc, CuniEEPROM &eeprom, int EEPROM_ADDR_LATEST_WATCHFACE) : _u8g(u8g), _rtc(rtc), _eeprom(eeprom) {
+Watchface::Watchface(U8GLIB &u8g, CUNI_HW_RTC_NAME &rtc, CuniEEPROM &eeprom, int EEPROM_ADDR_LATEST_WATCHFACE) : _u8g(u8g), _rtc(rtc), _eeprom(eeprom) {
   _EEPROM_latestWatchFace = EEPROM_ADDR_LATEST_WATCHFACE;
   _watchFaceId = _eeprom.read(_EEPROM_latestWatchFace);
 
@@ -88,5 +88,53 @@ void Watchface::_watchfaceD4() {
   _u8g.drawStr(x,  33, _rtc.getFullFormattedDate());
 }
 void Watchface::_watchfaceA1() {
-  // ANALOG CLOCK HERE!
+  _u8g.setFont(u8g_font_04b_03);
+
+  _dial();
+
+  _drawDial(_rtc.getHour(), 12.0, 15);     // rotation, rotationsteps/rotation, radius
+  _drawDial(_rtc.getMinute(), 60.0, 24);   // rotation, rotationsteps/rotation, radius
+  _drawDial(_rtc.getSecond(), 60, 27);     // rotation, rotationsteps/rotation, radius
+}
+
+
+
+
+void Watchface::_drawDial(float rotation, float ratio, int radius) {
+  angle =  (rotation-15) * 2.0 * 3.1415 / ratio; // 
+  X2 = ScreenWidthC + radius * cos(angle);
+  Y2 = ScreenHeightC + radius * sin(angle);
+  _u8g.drawLine(ScreenWidthC, ScreenHeightC, X2, Y2);
+}
+
+void Watchface::_dial() { // draw the dial
+  // u8g.drawCircle(ScreenWidthC, ScreenHeightC, 31);  // drwas circle around the dial
+  _u8g.drawCircle(ScreenWidthC, ScreenHeightC, 1);
+
+  _u8g.setFont(u8g_font_04b_03b);  // small size figures on dial
+  _u8g.setFontPosTop();
+  _u8g.drawStr(60, 5, "12");
+  _u8g.drawStr(86, 29, "3");
+  _u8g.drawStr(63, 52, "6");
+  _u8g.drawStr(39, 29, "9");
+
+  /*
+   _u8g.setFont(u8g_font_unifont);  // medium size figures on dial
+   _u8g.setFontPosTop();
+   _u8g.drawStr(55, 4, "12");
+   _u8g.drawStr(83, 25, "3");
+   _u8g.drawStr(60, 45, "6");
+   _u8g.drawStr(39, 25, "9");
+   */
+
+  for(int dash = 0; dash<12; dash++) { // draw the "5 minutes" dashes
+    angle = dash / 12.0 * 2 * 3.1415;
+    X2 = ScreenWidthC + 30 * cos(angle);
+    Y2 = ScreenHeightC + 30 * sin(angle);
+    X3 = ScreenWidthC + 28 * cos(angle);
+    Y3 = ScreenHeightC + 28 * sin(angle);
+
+    _u8g.drawLine(X2, Y2, X3, Y3);
+  }
+
 }
