@@ -53,6 +53,16 @@
 //#define CUNI_HW_KEYPAD_CUSTOM_PATH "my_keypad.h"
 
 
+// pins
+#define CUNI_PIN_BTN_BACK 2;
+#define CUNI_PIN_BTN_SELECT 3;
+#define CUNI_PIN_BTN_UP 11;
+#define CUNI_PIN_BTN_DOWN 8;
+#define CUNI_PIN_BUZZER 21;
+#define CUNI_PIN_LED_PIN A6;
+
+
+
 // DO NOT EDIT BELOW!
 #ifndef CUNI_OS_PLATFORM_ID
   #error CuniOS Error: "CUNI_OS_PLATFORM_ID" not specified

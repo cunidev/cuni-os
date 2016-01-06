@@ -1,9 +1,9 @@
 /* 
  * The BIG ToDo List 
- * - fix some horrible bugs: the Alarm bug (no sound) and the Snooze RTC bug
- * - (maybe) save stopwatch data and latest watchface in EEPROM
+ * - fix some horrible bugs: the Alarm bug (no sound)
+ * - (maybe) save stopwatch data in EEPROM
  * - use Bluetooth menu (now empty) for Notifications and device info (BT firmware, module name...)
- * - add some apps to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
+ * - add some apps (tiny games, MIDI player...) to the Extras menu (it'd be cool to be able to install apps via BT, but EEPROM is a little tiny...)
  * 
  * Settings (many, many changes):
  * - as the option number is going to grow, first of all a decent menu support on the Cuni UI must be added
@@ -62,13 +62,13 @@
 
 
 
-// Set pins below, but make sure they are supported
-const int BTN_BACK = 2;
-const int BTN_SELECT = 3;
-const int BTN_UP = 11;
-const int BTN_DOWN = 8;
-const int BUZZER = 21;
-const int LED_PIN = A6;
+// uses both preprocessor macros and "compiler-side" integers to save space
+const int BTN_BACK = CUNI_PIN_BTN_BACK;
+const int BTN_SELECT = CUNI_PIN_BTN_SELECT;
+const int BTN_UP = CUNI_PIN_BTN_UP;
+const int BTN_DOWN = CUNI_PIN_BTN_DOWN;
+const int BUZZER = CUNI_PIN_BUZZER;
+const int LED_PIN = CUNI_PIN_LED_PIN;
 
 const int EEPROM_ADDR_OS_VERSION = 0;
 const int EEPROM_ADDR_ALARM_HOUR = 1;
@@ -118,20 +118,27 @@ StopWatch sw;    // MILLIS (default)
 StopWatch timerSW(StopWatch::SECONDS);
 
 CUNI_HW_BLUETOOTH_NAME bt(9600);
-CUNI_HW_GOVERNOR_NAME pwrsave;
 CUNI_HW_KEYPAD_NAME keypad(BTN_BACK, BTN_SELECT, BTN_UP, BTN_DOWN);
 CUNI_HW_RTC_NAME rtc;
 CUNI_HW_EEPROM_NAME eeprom;
 CUNI_HW_TIMER_INTERRUPT_NAME interruptTimer;
+CUNI_HW_GOVERNOR_NAME pwrsave(keypad);
 
 CuniUI ui(u8g, keypad, 128, 64);
 LED notificationLED(LED_PIN);
 
 Watchface watchface(u8g, rtc, eeprom, EEPROM_ADDR_LATEST_WATCHFACE);
 
-// TEENSY ONLY! (TODO: handle interrupts in dedicated class)
+#if CUNI_OS_PLATFORM_ID == 2
+time_t getTeensy3Time() {
+  return Teensy3Clock.get();
+}
+#endif
 
 void setup() {
+  #if CUNI_OS_PLATFORM_ID == 2
+    setSyncProvider(getTeensy3Time);
+  #endif
   Serial.begin(9600);
   pinMode(BUZZER,OUTPUT);
   u8g.setColorIndex(1);
@@ -248,6 +255,7 @@ void homeScreen() {
         watch();
         break;
         case 1:
+        ui.alert("Not implemented yet");
         break;
         case 2:
         chess(); // uhm... quite disappointing for someone looking for something more useful (TODO!)
@@ -468,7 +476,11 @@ void clock() {
       do {
         // clear screen
       } while(u8g.nextPage());
-      pwrsave.sleepUntilButtonWake(BTN_UP); // TODO/BUG: RTC NOT working while sleeping!!
+      delay(SW_MENU_DELAY * 2);
+      pwrsave.sleepUntilInterrupt();
+      #if CUNI_OS_PLATFORM_ID == 2
+        setSyncProvider(getTeensy3Time); // should solve the "frozen RTC" bug on Teensy
+      #endif
     }
     delay(1);
   }

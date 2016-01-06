@@ -44,6 +44,19 @@ void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[]
 
 }
 
+void CuniUI::alert(char title[], char text[], boolean showButton) {
+  alert(title, text, showButton, "OK");
+}
+void CuniUI::alert(char title[], char text[], char btnText[]) {
+  alert(title, text, true, btnText);
+}
+void CuniUI::alert(char title[], char text[]) {
+  alert(title, text, true, "OK");
+}
+void CuniUI::alert(char text[]) {
+  alert("", text, true, "OK");
+}
+
 int CuniUI::dialog(char text[], char btnYes[], char btnNo[], boolean allowCancel) {
   int cursor = 0;
   while(true) {

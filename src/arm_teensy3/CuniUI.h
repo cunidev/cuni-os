@@ -10,6 +10,11 @@ class CuniUI {
   public:
     CuniUI(U8GLIB &u8gl, CUNI_HW_KEYPAD_NAME &keys, int display_w, int display_h);
     void alert(char title[], char text[], boolean showButton, char btnText[]);
+    void alert(char title[], char text[], boolean showButton);
+    void alert(char title[], char text[], char btnText[]);
+    void alert(char title[], char text[]);
+    void alert(char text[]);
+    
     int dialog(char text[], char btnYes[], char btnNo[], boolean allowCancel);
     boolean confirm(char text[], char btnYes[], char btnNo[]);
     

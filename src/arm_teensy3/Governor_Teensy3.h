@@ -9,12 +9,16 @@
 #define CUNI_HW_GOVERNOR_NAME PowerSave
 #include <Arduino.h>
 #include <Snooze.h>
+#include <Time.h>
+#include CUNI_HW_KEYPAD_PATH
 
 class PowerSave {
   public:
-    void sleepUntilButtonWake(int buttonPin);
+    PowerSave(CUNI_HW_KEYPAD_NAME &keypad);
+    void sleepUntilInterrupt();
   private:
     SnoozeBlock snooze;
+    CUNI_HW_KEYPAD_NAME &_keypad;
 };
 
 #endif
