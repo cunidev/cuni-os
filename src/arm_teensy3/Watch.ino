@@ -77,7 +77,8 @@ const int EEPROM_ADDR_ALARM_ENABLED = 3;
 const int EEPROM_ADDR_BT_ENABLED = 4;
 const int EEPROM_ADDR_LATEST_WATCHFACE = 5;
 
-const int SW_MENU_DELAY = 200; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
+const int SW_MENU_DELAY = CUNI_OS_MENU_DELAY; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
+const int TIMER_TIMEOUT = 30000; // in milliseconds, time after which the timer alert automatically dismisses
 const int BTN_RADIUS = 1; // for CuniUILib
 const int DISPLAY_WIDTH = CUNI_HW_DISPLAY_WIDTH;
 const int DISPLAY_HEIGHT = CUNI_HW_DISPLAY_HEIGHT;
@@ -97,7 +98,6 @@ char stopwatch_lap4[15] = "#4 --:--:--:--"; // obviously, this could be managed 
 int statusBarCounter = 0;
 int alarmHour = 0;
 int alarmMinute = 0;
-boolean interruptBusy = false;
 
 int swHour = 0;
 int swMinute = 0;
@@ -255,7 +255,7 @@ void homeScreen() {
         watch();
         break;
         case 1:
-        ui.alert("Not implemented yet");
+        ui.alert("", "Not supported yet :(", true, "Return", 5000);
         break;
         case 2:
         chess(); // uhm... quite disappointing for someone looking for something more useful (TODO!)
@@ -736,9 +736,22 @@ void timer() {
   int timMinute = 0;
   int timSecond = 0;
   if(!timerSet) {
-      setTimer();
-      timerSW.start();
-      timerSet = true;
+    int timerHour = 0;
+    int timerMinute = 0;
+    if(timerSW.isRunning()) {
+      timerSW.stop();
+      timerSW.reset();
+    }
+    timerHour = ui.hourPicker();
+    int timerMinuteMin = 0;
+    if(timerHour == 0) { 
+      timerMinuteMin = 1;
+    }
+    timerMinute = ui.numberPicker(timerMinuteMin, 59, true, "minute");
+    
+    timerSeconds = (timerHour * 3600) + (timerMinute * 60);
+    timerSW.start();
+    timerSet = true;
   }
   while(timerSet && timerOn) {
     u8g.firstPage();
@@ -813,21 +826,7 @@ void recoveryMode() {
   } // can be easily quit using break;
 }
 
-void setTimer() {
-  int timerHour = 0;
-  int timerMinute = 0;
-    if(timerSW.isRunning()) {
-      timerSW.stop();
-      timerSW.reset();
-    }
-    timerHour = ui.hourPicker();
-    int timerMinuteMin = 0;
-    if(timerHour == 0) { 
-      timerMinuteMin = 1;
-    }
-    timerMinute = ui.numberPicker(timerMinuteMin, 59, true, "minute");
-    timerSeconds = (timerHour * 3600) + (timerMinute * 60);
-}
+
 
 void buzzerTone(int toneValue, int time) { // todo: implement as a class
   tone(BUZZER,toneValue);
@@ -841,26 +840,23 @@ void clicker() {
 
 
 void interruptLoop() {
-  if(!interruptBusy) {
-    interruptBusy = true;
-    isTimer();
-    if(alarmEnabled && rtc.getHour() == alarmHour && rtc.getMinute() == alarmMinute) {
-      if(lostAlarm) {
-        lostAlarm = false;
-      }
-      alarmLoop();
+  isTimer();
+  if(alarmEnabled && rtc.getHour() == alarmHour && rtc.getMinute() == alarmMinute) {
+    if(lostAlarm) {
+      lostAlarm = false;
     }
+    alarmLoop();
   }
-  interruptBusy = false;
+
 }
 void isTimer() {
-  int x = 0;
   if(timerSW.isRunning()) {
     if(timerSW.elapsed() >= timerSeconds) {
       timerSW.stop();
       timerSW.reset();
       timerSeconds = 0;
       timerSet = false;
+      unsigned long timeoutOffset = millis();
       while(true) {
         u8g.firstPage();
         do {
@@ -872,21 +868,20 @@ void isTimer() {
           u8g.setFontPosTop();
           u8g.drawStr(28,40,"Press any key...");
         } while(u8g.nextPage());
-        if((x % 7) == 0) {
+        if((millis() - timeoutOffset % 2000) < 50) {
           notificationLED.enable(255);
           buzzerTone(300,50);
           delay(80);
           notificationLED.disable();
           buzzerTone(300,50);
         }
-        if(x == 100) {
+        if(millis() - timeoutOffset > TIMER_TIMEOUT) {
           break;
         }
         if(keypad.getPressedButton() != 0) {
           delay(SW_MENU_DELAY);
           break;
         }
-        x++;
       }
     }
   }

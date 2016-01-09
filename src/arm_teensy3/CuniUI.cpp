@@ -5,8 +5,7 @@
  * 
  * TODO:
  * - make it work, first ;)
- * - alert(...) should have many constructors!
- * - alert(...): check for events; boolean to be able to use the back key to dismiss; auto-dismiss in N seconds
+ * - alert(...): check for events; boolean to be able to use the back key to dismiss
  * - (maybe) add clicker sound to be enabled or disabled with functions
  */
 
@@ -14,11 +13,20 @@ CuniUI::CuniUI(U8GLIB &u8gl, CUNI_HW_KEYPAD_NAME &keys, int display_w, int displ
   display_width = display_w; display_height = display_h;
 }
 
-void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[]) {
+void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[], unsigned long dismissTimeout) {
+  boolean dismissOnTimer = true;
+  unsigned long offsetMillis = millis();
+  if(dismissTimeout == 0) {
+    dismissOnTimer = false;
+  }
+    
   while(true) {
+    if(dismissOnTimer) {
+      if(millis() - offsetMillis > dismissTimeout)
+        break;
+    }
     u8g.firstPage();
     do {
-      // todo: must check for events (alarm etc.)!! isAlarm();
       //drawStatusBar();
       u8g.setFont(u8g_font_helvB08);
       u8g.setFontPosTop();
@@ -43,18 +51,21 @@ void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[]
   }
 
 }
+void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[]) {
+  alert(title, text, showButton, btnText, 0);
+}
 
 void CuniUI::alert(char title[], char text[], boolean showButton) {
-  alert(title, text, showButton, "OK");
+  alert(title, text, showButton, "OK", 0);
 }
 void CuniUI::alert(char title[], char text[], char btnText[]) {
-  alert(title, text, true, btnText);
+  alert(title, text, true, btnText, 0);
 }
 void CuniUI::alert(char title[], char text[]) {
-  alert(title, text, true, "OK");
+  alert(title, text, true, "OK", 0);
 }
 void CuniUI::alert(char text[]) {
-  alert("", text, true, "OK");
+  alert("", text, true, "OK", 0);
 }
 
 int CuniUI::dialog(char text[], char btnYes[], char btnNo[], boolean allowCancel) {

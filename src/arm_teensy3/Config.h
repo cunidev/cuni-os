@@ -61,6 +61,9 @@
 #define CUNI_PIN_BUZZER 21;
 #define CUNI_PIN_LED_PIN A6;
 
+// other constants
+#define CUNI_OS_MENU_DELAY 200
+
 
 
 // DO NOT EDIT BELOW!
