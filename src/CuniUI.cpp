@@ -27,7 +27,6 @@ void CuniUI::alert(char title[], char text[], boolean showButton, char btnText[]
     }
     u8g.firstPage();
     do {
-      //drawStatusBar();
       u8g.setFont(u8g_font_helvB08);
       u8g.setFontPosTop();
       u8g.drawStr(floor( ( display_width - u8g.getStrWidth(title) ) / 2 ),17,title);
@@ -71,7 +70,6 @@ void CuniUI::alert(char text[]) {
 int CuniUI::dialog(char text[], char btnYes[], char btnNo[], boolean allowCancel) {
   int cursor = 0;
   while(true) {
-    // TODO: check for events
     u8g.firstPage();
     do {
       u8g.setFont(u8g_font_helvR08);
@@ -138,7 +136,6 @@ boolean CuniUI::confirm(char text[], char btnYes[], char btnNo[]) {
   boolean result;
   int cursor = 0;
   while(waitingConfirm) {
-    // TODO: check for events! isAlarm();
     u8g.firstPage();
     do {
       u8g.setFont(u8g_font_helvR08);

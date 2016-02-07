@@ -1,15 +1,14 @@
-#include "Bluetooth_HC05.h"
+#include "Bluetooth_HM10.h"
 #define BT_SERIAL Serial2
-// not supported by all boards...
 
-HC05::HC05(int speed) {
+HM10::HM10(int speed) {
   baudRate = speed;
   BT_SERIAL.begin(speed);
 }
-boolean HC05::isReady() {
+boolean HM10::isReady() {
   for(int x = 0; x < 5000; x++) {
     if(x % 1000 == 0) 
-      BT_SERIAL.write("AT");
+      BT_SERIAL.write("AT\n\t");
     if(BT_SERIAL.available() && BT_SERIAL.read() == 79) {
       return true;
     }

@@ -10,7 +10,7 @@ void PowerSave::sleepUntilInterrupt() {
   snooze.pinMode(_keypad.pin_select, INPUT_PULLUP, RISING);
   snooze.pinMode(_keypad.pin_up, INPUT_PULLUP, RISING);
   snooze.pinMode(_keypad.pin_down, INPUT_PULLUP, RISING);
-  Snooze.deepSleep(snooze);
+  Snooze.sleep(snooze);
 }
 
 #endif

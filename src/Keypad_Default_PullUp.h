@@ -1,12 +1,12 @@
 #ifndef Keypad_h
 #define Keypad_h
-#define CUNI_HW_KEYPAD_NAME DefaultKeypad
+#define CUNI_HW_KEYPAD_NAME PullUpKeypad
 
 #include "Arduino.h"
 
-class DefaultKeypad {
+class PullUpKeypad {
   public:
-    DefaultKeypad(int back, int select, int up, int down);
+    PullUpKeypad(int back, int select, int up, int down);
     enum Buttons { KEY_BACK, KEY_SELECT, KEY_BUP, KEY_BDOWN };
     int getPressedButton();
     boolean isButtonPressed(enum Buttons btn_label);

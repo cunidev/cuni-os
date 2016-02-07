@@ -78,11 +78,13 @@ const int EEPROM_ADDR_BT_ENABLED = 4;
 const int EEPROM_ADDR_LATEST_WATCHFACE = 5;
 
 const int SW_MENU_DELAY = CUNI_OS_MENU_DELAY; // in milliseconds, reducing it will reduce lag but make some actions, like menu navigation, more difficult
-const int TIMER_TIMEOUT = 30000; // in milliseconds, time after which the timer alert automatically dismisses
+const int BUTTON_IDLE_TIMEOUT = CUNI_OS_TIMEOUT_BUTTONS; // in milliseconds, time after which the timer alert automatically dismisses
+const unsigned long DISPLAY_TIMEOUT = 10000;
 const int BTN_RADIUS = 1; // for CuniUILib
 const int DISPLAY_WIDTH = CUNI_HW_DISPLAY_WIDTH;
 const int DISPLAY_HEIGHT = CUNI_HW_DISPLAY_HEIGHT;
 const bool PLL_SUPPORTED = CUNI_HW_PLL_SUPPORTED;
+const int SERIAL_BAUD = CUNI_OS_SERIAL_SPEED;
 
 boolean bluetooth_available = false;
 boolean bluetoothOn = false;
@@ -129,24 +131,15 @@ LED notificationLED(LED_PIN);
 
 Watchface watchface(u8g, rtc, eeprom, EEPROM_ADDR_LATEST_WATCHFACE);
 
-#if CUNI_OS_PLATFORM_ID == 2
-time_t getTeensy3Time() {
-  return Teensy3Clock.get();
-}
-#endif
-
 void setup() {
-  #if CUNI_OS_PLATFORM_ID == 2
+  #if (CUNI_OS_PLATFORM_ID == 2)
     setSyncProvider(getTeensy3Time);
   #endif
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD);
   pinMode(BUZZER,OUTPUT);
   u8g.setColorIndex(1);
   
-  u8g.firstPage();
-  do {
-    // clear screen
-  } while(u8g.nextPage());
+  clearScreen();
   
   if(keypad.isButtonPressed(CUNI_HW_KEYPAD_NAME::KEY_BUP) && keypad.isButtonPressed(CUNI_HW_KEYPAD_NAME::KEY_BDOWN)) {
     buzzerTone(350,200);
@@ -473,13 +466,11 @@ void clock() {
       delay(SW_MENU_DELAY);
     } else if(btn == BTN_BACK) {
       u8g.firstPage();
-      do {
-        // clear screen
-      } while(u8g.nextPage());
+      clearScreen();
       delay(SW_MENU_DELAY * 2);
       pwrsave.sleepUntilInterrupt();
       #if CUNI_OS_PLATFORM_ID == 2
-        setSyncProvider(getTeensy3Time); // should solve the "frozen RTC" bug on Teensy
+        setSyncProvider(Teensy3Time.get); // should solve the "frozen RTC" bug on Teensy
       #endif
     }
     delay(1);
@@ -829,9 +820,7 @@ void recoveryMode() {
 
 
 void buzzerTone(int toneValue, int time) { // todo: implement as a class
-  tone(BUZZER,toneValue);
-  delay(time);
-  noTone(BUZZER);
+  tone(BUZZER,toneValue, time);
 }
 void clicker() {
   buzzerTone(70,15);
@@ -840,6 +829,11 @@ void clicker() {
 
 
 void interruptLoop() {
+  Serial.println(keypad.getButtonIdleTime());
+  if(keypad.getButtonIdleTime() > DISPLAY_TIMEOUT) {
+    clearScreen();
+    pwrsave.sleepUntilInterrupt(); // TODO: screen fails here after waking up!!!
+  }
   isTimer();
   if(alarmEnabled && rtc.getHour() == alarmHour && rtc.getMinute() == alarmMinute) {
     if(lostAlarm) {
@@ -875,7 +869,7 @@ void isTimer() {
           notificationLED.disable();
           buzzerTone(300,50);
         }
-        if(millis() - timeoutOffset > TIMER_TIMEOUT) {
+        if(millis() - timeoutOffset > BUTTON_IDLE_TIMEOUT) {
           break;
         }
         if(keypad.getPressedButton() != 0) {
@@ -887,6 +881,12 @@ void isTimer() {
   }
 }
 
+void clearScreen() {
+  u8g.firstPage();
+  do {
+    // clear screen
+  } while(u8g.nextPage());
+}
 
 void updateAlarmEnabled() {
   if(eeprom.read(EEPROM_ADDR_ALARM_ENABLED) == 1) {

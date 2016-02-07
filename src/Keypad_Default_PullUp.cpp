@@ -1,29 +1,29 @@
 #include "Config.h"
 
-#include "Keypad_Default.h"
+#include "Keypad_Default_PullUp.h"
 
-DefaultKeypad::DefaultKeypad(int back, int select, int up, int down) {
+PullUpKeypad::PullUpKeypad(int back, int select, int up, int down) {
   pin_back = back;
   pin_select = select;
   pin_up = up;
   pin_down = down;
-  pinMode(back,INPUT);
-  pinMode(select,INPUT);
-  pinMode(up,INPUT);
-  pinMode(down,INPUT);
+  pinMode(back,INPUT_PULLUP);
+  pinMode(select,INPUT_PULLUP);
+  pinMode(up,INPUT_PULLUP);
+  pinMode(down,INPUT_PULLUP);
 }
-int DefaultKeypad::getPressedButton() {
+int PullUpKeypad::getPressedButton() {
   int return_pin = 0;
-  if(DefaultKeypad::isButtonPressed(DefaultKeypad::KEY_BACK)) {
+  if(PullUpKeypad::isButtonPressed(PullUpKeypad::KEY_BACK)) {
     return_pin = pin_back;
   }
-  if(DefaultKeypad::isButtonPressed(DefaultKeypad::KEY_SELECT)) {
+  if(PullUpKeypad::isButtonPressed(PullUpKeypad::KEY_SELECT)) {
     return_pin = pin_select;
   }
-  if(DefaultKeypad::isButtonPressed(DefaultKeypad::KEY_BUP)) {
+  if(PullUpKeypad::isButtonPressed(PullUpKeypad::KEY_BUP)) {
     return_pin = pin_up;
   }
-  if(DefaultKeypad::isButtonPressed(DefaultKeypad::KEY_BDOWN)) {
+  if(PullUpKeypad::isButtonPressed(PullUpKeypad::KEY_BDOWN)) {
     return_pin = pin_down;
   }
   if(return_pin != 0) {
@@ -31,7 +31,8 @@ int DefaultKeypad::getPressedButton() {
   }
   return return_pin;
 }
-boolean DefaultKeypad::isButtonPressed(enum Buttons btn_label) {
+
+boolean PullUpKeypad::isButtonPressed(enum Buttons btn_label) {
   int checkPin;
   switch(btn_label) {
     case KEY_BACK:
@@ -48,16 +49,16 @@ boolean DefaultKeypad::isButtonPressed(enum Buttons btn_label) {
     break;
     
   }
-  boolean isButtonPressed = (digitalRead(checkPin) == HIGH);
+  boolean isButtonPressed = (digitalRead(checkPin) == LOW);
   if(isButtonPressed) {
     _updateLastButtonTime();
   }
   return isButtonPressed;
 }
-unsigned long DefaultKeypad::getButtonIdleTime() {
+unsigned long PullUpKeypad::getButtonIdleTime() {
   return millis() - _lastButtonTime;
 }
-void DefaultKeypad::_updateLastButtonTime() {
+
+void PullUpKeypad::_updateLastButtonTime() {
   _lastButtonTime = millis();
 }
-
